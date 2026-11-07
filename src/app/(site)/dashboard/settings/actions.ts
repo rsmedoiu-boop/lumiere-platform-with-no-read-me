@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { newPasswordSchema } from "@/lib/auth/schemas";
 
 export type SettingsState = { error?: string; message?: string } | undefined;
 
@@ -42,4 +43,19 @@ export async function cancelDeletion(): Promise<SettingsState> {
   await supabase.rpc("cancel_account_deletion");
   revalidatePath("/dashboard/settings");
   return { message: "Deletion cancelled. Your account stays." };
+}
+
+/** Choose a new password. Works for a signed-in customer, including straight after following a reset link. */
+export async function changePassword(_: SettingsState, form: FormData): Promise<SettingsState> {
+  await requireUser("/dashboard/settings");
+  const parsed = newPasswordSchema.safeParse({ password: form.get("password"), confirm: form.get("confirm") });
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const supabase = (await createSupabaseServerClient())!;
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    if (error.code === "same_password") return { error: "Please choose a password you haven't used before." };
+    if (error.code === "weak_password") return { error: "That password is too easy to guess. Please choose another." };
+    return { error: "We couldn't change your password. Please try again." };
+  }
+  return { message: "Your password has been changed." };
 }

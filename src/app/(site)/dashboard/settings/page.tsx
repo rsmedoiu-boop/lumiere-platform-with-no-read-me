@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { DeletionControls, ProfileForm } from "./SettingsForms";
+import { DeletionControls, PasswordForm, ProfileForm } from "./SettingsForms";
 
 export const metadata: Metadata = { title: "Account settings", robots: { index: false } };
 
@@ -37,6 +37,13 @@ async function Settings() {
         <h2 className="text-3xl">Your details</h2>
         <div className="mt-5">
           <ProfileForm fullName={profile?.full_name ?? ""} email={user.email} marketing={!!profile?.marketing_opt_in} />
+        </div>
+      </section>
+      <section id="password" className="scroll-mt-28">
+        <h2 className="text-3xl">Password</h2>
+        <p className="mt-3 max-w-md text-sm text-ink-soft">Choose a new password. If you came here from a reset email, this is where you set it.</p>
+        <div className="mt-5">
+          <PasswordForm />
         </div>
       </section>
       <section>

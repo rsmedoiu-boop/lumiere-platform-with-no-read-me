@@ -29,3 +29,15 @@ describe("photo rules", () => {
     expect(checkDraft(o, t, { slots: {}, story: { body: "x".repeat(1501) } }).ok).toBe(false);
   });
 });
+
+import { newPasswordSchema } from "@/lib/auth/schemas";
+describe("choosing a new password", () => {
+  it("applies the sign-up rule and needs both boxes to match", () => {
+    expect(newPasswordSchema.safeParse({ password: "short1", confirm: "short1" }).success).toBe(false);
+    expect(newPasswordSchema.safeParse({ password: "onlyletterslong", confirm: "onlyletterslong" }).success).toBe(false);
+    const mismatch = newPasswordSchema.safeParse({ password: "goodpass1234", confirm: "goodpass12345" });
+    expect(mismatch.success).toBe(false);
+    if (!mismatch.success) expect(mismatch.error.issues[0].message).toBe("The two passwords don't match");
+    expect(newPasswordSchema.safeParse({ password: "goodpass1234", confirm: "goodpass1234" }).success).toBe(true);
+  });
+});

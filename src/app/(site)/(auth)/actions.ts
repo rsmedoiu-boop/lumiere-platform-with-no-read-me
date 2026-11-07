@@ -64,7 +64,7 @@ export async function requestPasswordReset(_: AuthState, form: FormData): Promis
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Password reset isn't connected yet." };
   const site = siteUrl();
-  await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${site}/auth/confirm?next=/dashboard/settings` });
+  await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${site}/auth/confirm?next=/dashboard/settings%23password` });
   // Same answer whether or not the account exists.
   return { message: "If an account uses that address, a reset link is on its way." };
 }

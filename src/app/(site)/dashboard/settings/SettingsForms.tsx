@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { FormMessage } from "@/components/ui/AuthCard";
-import { cancelDeletion, requestDeletion, updateProfile } from "./actions";
+import { cancelDeletion, changePassword, requestDeletion, updateProfile } from "./actions";
 
 export function ProfileForm({ fullName, email, marketing }: { fullName: string; email: string; marketing: boolean }) {
   const [state, action, pending] = useActionState(updateProfile, undefined);
@@ -24,6 +24,27 @@ export function ProfileForm({ fullName, email, marketing }: { fullName: string; 
       </label>
       <button className="btn btn-primary justify-self-start" disabled={pending}>
         {pending ? "Saving…" : "Save changes"}
+      </button>
+    </form>
+  );
+}
+
+export function PasswordForm() {
+  const [state, action, pending] = useActionState(changePassword, undefined);
+  return (
+    <form action={action} className="grid max-w-md gap-5">
+      <FormMessage error={state?.error} message={state?.message} />
+      <div className="field">
+        <label htmlFor="password">New password</label>
+        <input id="password" name="password" type="password" autoComplete="new-password" minLength={10} required aria-describedby="pw-hint" />
+        <p id="pw-hint" className="text-xs text-ink-soft">At least 10 characters, with letters and a number.</p>
+      </div>
+      <div className="field">
+        <label htmlFor="confirm">Type it again</label>
+        <input id="confirm" name="confirm" type="password" autoComplete="new-password" required />
+      </div>
+      <button className="btn btn-primary justify-self-start" disabled={pending}>
+        {pending ? "Saving…" : "Save new password"}
       </button>
     </form>
   );
