@@ -3,7 +3,13 @@
  * Run with: npm run db:seed
  */
 import { writeFileSync } from "node:fs";
+import { createJiti } from "jiti";
 import { categories, products } from "../src/config/catalogue.ts";
+
+// The template library uses the app's import style (no extensions, @/ alias),
+// so load it through jiti rather than Node's type stripping.
+const jiti = createJiti(import.meta.url, { alias: { "@": new URL("../src", import.meta.url).pathname } });
+const { templateLibrary } = (await jiti.import("../src/lib/templates/library.ts")) as typeof import("../src/lib/templates/library");
 
 const q = (s: string) => `'${s.replaceAll("'", "''")}'`;
 const lines: string[] = [
@@ -37,6 +43,20 @@ products.forEach((p, i) => {
   }
 });
 
+// Templates: the launch library, published live. Admin edits made later in
+// the database win only until the next seed — keep the library the source.
+templateLibrary.forEach((t, i) => {
+  const occ = `array[${(t.occasions ?? [t.category]).map(q).join(", ")}]::text[]`;
+  lines.push(
+    `insert into public.templates (category_id, slug, name, tier, status, manifest, schema_version, occasions, sort_order)` +
+      ` select id, ${q(t.slug)}, ${q(t.name)}, ${q(t.tier)}, 'live', ${q(JSON.stringify(t.manifest))}::jsonb, ${t.manifest.schemaVersion}, ${occ}, ${i + 1}` +
+      ` from public.categories where slug = ${q(t.category)}` +
+      ` on conflict (slug) do update set category_id = excluded.category_id, name = excluded.name, tier = excluded.tier,` +
+      ` status = excluded.status, manifest = excluded.manifest, schema_version = excluded.schema_version,` +
+      ` occasions = excluded.occasions, sort_order = excluded.sort_order;`,
+  );
+});
+
 lines.push("commit;", "");
 writeFileSync(new URL("../supabase/seed.sql", import.meta.url), lines.join("\n"));
-console.log(`seed.sql written: ${categories.length} categories, ${products.length} products`);
+console.log(`seed.sql written: ${categories.length} categories, ${products.length} products, ${templateLibrary.length} templates`);

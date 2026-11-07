@@ -56,3 +56,8 @@ Last updated: 7 November 2026. A feature is ticked only when it is implemented *
 - Legal pages are drafts and say so on the page.
 - `supabase/config.toml` is not committed yet; created by `npx supabase init` when you first run it locally.
 - Brand name, support email and domain are placeholders in `src/lib/brand.ts`.
+
+## Milestone 3 — Invitation Studio (in progress)
+
+- ✅ **M3.1 Foundations** — occasion registry (8 occasions: fields, sections, reply questions, invitation types, settings such as surprise mode, hide age, child privacy), invitation types (save the date → light "hoping to come" reply; invitation and evening invitation → full RSVP; thank-you card → no countdown/RSVP), one shared section vocabulary, templates stored in the database with the occasions they suit (`templates_for_occasion`), one invitation of each type per event. Tests: 13 new unit tests, 3 new database tests. Occasion pages at `/invitations/[occasion]`.
+- ⏳ M3.2 Cinematic engine · M3.3 Start flow · M3.4 Studio editor · M3.5 Photos & video · M3.6 Preview & publish · M3.7 Twelve templates

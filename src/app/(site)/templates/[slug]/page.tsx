@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { InvitationRenderer } from "@/components/invitation/InvitationRenderer";
 import { templateLibrary, getTemplate } from "@/lib/templates/library";
+import { sectionLabels } from "@/lib/events/site";
+
+const sectionNames: Record<string, string> = { ...sectionLabels, rsvp: "RSVP with live guest list", extra: "Good to know" };
 
 export function generateStaticParams() {
   return templateLibrary.map((t) => ({ slug: t.slug }));
@@ -13,11 +16,6 @@ export async function generateMetadata({ params }: PageProps<"/templates/[slug]"
   return { title: t ? `${t.name} wedding invitation` : "Design not found" };
 }
 
-const sectionNames: Record<string, string> = {
-  countdown: "Countdown", ceremony: "Ceremony details", reception: "Reception details", dress_code: "Dress code",
-  directions: "Directions and map", accommodation: "Where to stay", gallery: "Photo gallery", video: "Your video",
-  rsvp: "Personal RSVP links", extra: "Extra information",
-};
 
 export default async function TemplatePage({ params }: PageProps<"/templates/[slug]">) {
   const t = getTemplate((await params).slug);

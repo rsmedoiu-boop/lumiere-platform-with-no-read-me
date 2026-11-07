@@ -62,18 +62,25 @@ export const sceneSchema = z.object({
   transition: z.enum(["fade", "rise", "none"]).default("fade"),
 });
 
+/**
+ * Event-website sections — one vocabulary for every template, occasion and
+ * invitation type. A template lists the sections its design supports; the
+ * occasion decides which are offered and switched on by default.
+ */
 export const sectionKeys = [
   "countdown",
-  "ceremony",
-  "reception",
+  "story",
+  "schedule",
+  "venue",
   "dress_code",
-  "directions",
   "accommodation",
   "gallery",
   "video",
+  "gifts",
   "rsvp",
   "extra",
 ] as const;
+export type SectionKey = (typeof sectionKeys)[number];
 
 export const manifestSchema = z.object({
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -92,7 +99,14 @@ export interface TemplateDefinition {
   slug: string;
   name: string;
   tier: "classic" | "premium" | "video" | "cinematic";
+  /** Primary category (the template's home in the gallery). */
   category: string;
+  /**
+   * Occasions this design is offered for. Defaults to just `category`.
+   * A template can only list occasions whose fields cover every slot its
+   * layers use; `templateSupports` (src/lib/occasions) checks this.
+   */
+  occasions?: string[];
   mood: string;
   manifest: Manifest;
   /** Sample photos (slot key -> image URL) shown in gallery previews. */

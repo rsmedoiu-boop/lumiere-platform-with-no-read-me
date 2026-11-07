@@ -31,15 +31,23 @@ export interface CatalogueProduct {
   highlight?: boolean;
 }
 
+/**
+ * One row per occasion in src/lib/occasions/registry.ts. `isActive` is the
+ * commercial switch; an active occasion appears in the start flow as soon as
+ * at least one live design supports it.
+ */
 export const categories = [
   { slug: "weddings", name: "Weddings", sortOrder: 1, isActive: true },
-  // Ready for later launches — switched on by flipping isActive.
-  { slug: "engagements", name: "Engagements", sortOrder: 2, isActive: false },
-  { slug: "birthdays", name: "Birthdays", sortOrder: 3, isActive: false },
-  { slug: "christenings", name: "Christenings", sortOrder: 4, isActive: false },
-  { slug: "anniversaries", name: "Anniversaries", sortOrder: 5, isActive: false },
-  { slug: "corporate", name: "Corporate events", sortOrder: 6, isActive: false },
+  { slug: "engagements", name: "Engagements", sortOrder: 2, isActive: true },
+  { slug: "birthdays", name: "Birthdays", sortOrder: 3, isActive: true },
+  { slug: "anniversaries", name: "Anniversaries", sortOrder: 4, isActive: true },
+  { slug: "christenings", name: "Christenings & naming days", sortOrder: 5, isActive: true },
+  { slug: "baby-showers", name: "Baby showers", sortOrder: 6, isActive: true },
+  { slug: "corporate", name: "Corporate events", sortOrder: 7, isActive: true },
+  { slug: "celebrations", name: "Other celebrations", sortOrder: 8, isActive: true },
 ] as const;
+
+export const activeCategorySlugs: readonly string[] = categories.filter((c) => c.isActive).map((c) => c.slug);
 
 export const products: CatalogueProduct[] = [
   {

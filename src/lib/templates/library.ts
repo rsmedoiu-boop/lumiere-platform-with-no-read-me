@@ -1,5 +1,6 @@
 /**
  * Launch template library (first three of fifteen).
+ * Each design lists the occasions it suits (see src/lib/occasions).
  *
  * These manifests are the seed for the `templates` table; in Milestone 3 the
  * gallery reads them from the database and admins upload new ones. Reusable
@@ -36,6 +37,7 @@ export const templateLibrary: TemplateDefinition[] = [
     name: "Ivory Vow",
     tier: "classic",
     category: "weddings",
+    occasions: ["weddings", "engagements", "anniversaries"],
     mood: "Classic and calm: engraved serif lettering, a single foil rule.",
     manifest: {
       schemaVersion: 1,
@@ -64,7 +66,7 @@ export const templateLibrary: TemplateDefinition[] = [
           ],
         },
       ],
-      sections: ["countdown", "ceremony", "reception", "dress_code", "directions", "rsvp"],
+      sections: ["countdown", "schedule", "venue", "dress_code", "extra", "rsvp"],
     },
   }),
   define({
@@ -72,6 +74,7 @@ export const templateLibrary: TemplateDefinition[] = [
     name: "Midnight Garden",
     tier: "premium",
     category: "weddings",
+    occasions: ["weddings", "engagements", "anniversaries"],
     mood: "Evening glamour: ink-blue ground, champagne lettering, a laurel crest.",
     manifest: {
       schemaVersion: 1,
@@ -100,7 +103,7 @@ export const templateLibrary: TemplateDefinition[] = [
           ],
         },
       ],
-      sections: ["countdown", "ceremony", "reception", "dress_code", "directions", "accommodation", "gallery", "rsvp"],
+      sections: ["countdown", "story", "schedule", "venue", "dress_code", "accommodation", "gallery", "gifts", "extra", "rsvp"],
     },
   }),
   define({
@@ -108,6 +111,7 @@ export const templateLibrary: TemplateDefinition[] = [
     name: "Riviera",
     tier: "video",
     category: "weddings",
+    occasions: ["weddings", "engagements", "anniversaries"],
     mood: "Sun-washed destination: blush paper, an arched portrait of the two of you.",
     sampleMedia: { photo: "/media/couple-riviera-720.webp" },
     manifest: {
@@ -134,7 +138,7 @@ export const templateLibrary: TemplateDefinition[] = [
           ],
         },
       ],
-      sections: ["countdown", "ceremony", "reception", "directions", "accommodation", "gallery", "video", "rsvp"],
+      sections: ["countdown", "story", "schedule", "venue", "accommodation", "gallery", "video", "extra", "rsvp"],
     },
   }),
 ];

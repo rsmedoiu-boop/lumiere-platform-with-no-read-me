@@ -3,11 +3,9 @@
  * (details/sections jsonb) plus the published invitation content, so every
  * template and every occasion uses the same shape.
  */
-import type { InvitationContent, TemplateDefinition } from "@/lib/templates/manifest";
+import type { InvitationContent, SectionKey, TemplateDefinition } from "@/lib/templates/manifest";
 
-export type SectionKey =
-  | "countdown" | "story" | "schedule" | "venue" | "dress_code"
-  | "accommodation" | "gallery" | "rsvp" | "extra";
+export type { SectionKey };
 
 export interface ScheduleItem { time: string; title: string; place?: string; note?: string }
 export interface Stay { name: string; distance: string; note?: string; url?: string }
@@ -42,6 +40,8 @@ export const sectionLabels: Record<SectionKey, string> = {
   dress_code: "Dress code",
   accommodation: "Where to stay",
   gallery: "Gallery",
+  video: "Film",
+  gifts: "Gifts",
   rsvp: "RSVP",
   extra: "Good to know",
 };

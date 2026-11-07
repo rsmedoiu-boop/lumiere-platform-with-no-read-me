@@ -345,12 +345,13 @@ run("database rules", () => {
   });
 
   it("export my data: complete for the owner, empty for anyone else", async () => {
-    const mine = await asUser(f.alice, () => one<{ d: any }>("select export_my_data() d"));
+    type Export = { d: { profile: { id: string }; events: { guests: unknown[]; seat_assignments: unknown[] }[] } };
+    const mine = await asUser(f.alice, () => one<Export>("select export_my_data() d"));
     expect(mine.d.profile.id).toBe(f.alice);
     expect(mine.d.events).toHaveLength(1);
     expect(mine.d.events[0].guests).toHaveLength(140);
     expect(mine.d.events[0].seat_assignments).toHaveLength(128);
-    const bobs = await asUser(f.bob, () => one<{ d: any }>("select export_my_data() d"));
+    const bobs = await asUser(f.bob, () => one<Export>("select export_my_data() d"));
     expect(bobs.d.events).toEqual([]);
   });
 
@@ -387,6 +388,55 @@ run("database rules", () => {
       expect((await db.query("select 1 from events where id = $1", [f.eventId])).rowCount).toBe(1);
       // Staff read access is not write access.
       expect((await db.query("update events set title = 'x' where id = $1", [f.eventId])).rowCount).toBe(0);
+    });
+  });
+
+  it("templates: the launch library is live, filtered by occasion for anyone", async () => {
+    await db.query("begin");
+    await db.query("set local role anon");
+    const wed = await db.query("select slug from templates_for_occasion('weddings')");
+    expect(wed.rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera"]);
+    expect((await db.query("select 1 from templates_for_occasion('anniversaries')")).rowCount).toBe(3);
+    expect((await db.query("select 1 from templates_for_occasion('birthdays')")).rowCount).toBe(0);
+    // Manifests round-trip intact.
+    const m = (await db.query("select manifest from templates where slug = 'midnight-garden'")).rows[0].manifest;
+    expect(m.schemaVersion).toBe(1);
+    expect(m.sections).toContain("rsvp");
+    await db.query("rollback");
+  });
+
+  it("templates: occasions must be real categories, and include the design's home", async () => {
+    await admin.query("begin");
+    try {
+      const r = await admin.query("update templates set occasions = array['birthdays'] where slug = 'ivory-vow' returning occasions");
+      expect(r.rows[0].occasions).toEqual(["weddings", "birthdays"]);
+      await admin.query("savepoint s");
+      await expect(admin.query("update templates set occasions = array['weddings','pirate-parties'] where slug = 'ivory-vow'")).rejects.toThrow(/Unknown occasion/);
+      await admin.query("rollback to savepoint s");
+      // Switching an occasion off hides its designs from the public list.
+      await admin.query("update categories set is_active = false where slug = 'engagements'");
+      expect((await admin.query("select 1 from templates_for_occasion('engagements')")).rowCount).toBe(0);
+    } finally {
+      await admin.query("rollback");
+    }
+  });
+
+  it("an event holds one invitation of each type, all private to its owner", async () => {
+    const tpl = (await admin.query("select id from templates where slug = 'midnight-garden'")).rows[0].id;
+    await asUser(f.alice, async () => {
+      for (const kind of ["save_the_date", "invitation", "evening_invitation", "thank_you"]) {
+        await db.query("insert into invitation_projects (event_id, template_id, kind) values ($1, $2, $3)", [f.eventId, tpl, kind]);
+      }
+      expect((await db.query("select 1 from invitation_projects where event_id = $1", [f.eventId])).rowCount).toBe(4);
+      await fails(
+        "insert into invitation_projects (event_id, template_id, kind) values ($1, $2, 'invitation')",
+        [f.eventId, tpl],
+        /invitation_projects_one_per_kind/,
+      );
+      await fails("insert into invitation_projects (event_id, template_id, kind) values ($1, $2, 'party_bag')", [f.eventId, tpl], /invalid input value/);
+    });
+    await asUser(f.bob, async () => {
+      await fails("insert into invitation_projects (event_id, template_id, kind) values ($1, $2, 'save_the_date')", [f.eventId, tpl], /row-level security/);
     });
   });
 
