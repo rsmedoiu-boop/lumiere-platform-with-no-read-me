@@ -395,8 +395,8 @@ run("database rules", () => {
     await db.query("begin");
     await db.query("set local role anon");
     const wed = await db.query("select slug from templates_for_occasion('weddings')");
-    expect(wed.rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera"]);
-    expect((await db.query("select 1 from templates_for_occasion('anniversaries')")).rowCount).toBe(3);
+    expect(wed.rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera", "tuscan-vineyard"]);
+    expect((await db.query("select 1 from templates_for_occasion('anniversaries')")).rowCount).toBe(4);
     expect((await db.query("select slug from templates_for_occasion('birthdays')")).rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden"]);
     expect((await db.query("select 1 from templates_for_occasion('corporate')")).rowCount).toBe(1);
     // Manifests round-trip intact.

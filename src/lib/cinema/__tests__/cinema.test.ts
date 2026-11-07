@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { templateLibrary, getTemplate } from "@/lib/templates/library";
 import { manifestSchema, resolveMotion, type ManifestInput } from "@/lib/templates/manifest";
-import { buildTimeline, revealFor, transitionFor, TRANSITION_MS } from "../motion";
+import { buildTimeline, openingsFor, revealFor, transitionFor, TRANSITION_MS } from "../motion";
 import { cinematicAssets, getAsset } from "../assets";
 import { monogramOf, namesLabel, resolveNames } from "../names";
 
@@ -92,6 +92,23 @@ describe("shared asset library", () => {
     }
   });
 
+  it("opening artwork and website paper resolve to real assets", () => {
+    for (const t of templateLibrary) {
+      const m = t.manifest;
+      if (m.motion.art) {
+        expect(getAsset(m.motion.art.closed), `${t.slug} closed`).toBeDefined();
+        expect(getAsset(m.motion.art.revealed), `${t.slug} revealed`).toBeDefined();
+      }
+      if (m.site?.paper) expect(getAsset(m.site.paper), `${t.slug} paper`).toBeDefined();
+    }
+  });
+
+  it("the gilded opening is only offered by designs that carry its artwork", () => {
+    expect(openingsFor(getTemplate("tuscan-vineyard")!.manifest)).toContain("gilded");
+    expect(openingsFor(garden.manifest)).not.toContain("gilded");
+    expect(openingsFor(garden.manifest)).toEqual(["envelope", "curtain", "title-card", "none"]);
+  });
+
   it("the same loop serves several scenes and designs (reuse, not one-offs)", () => {
     const uses = templateLibrary.flatMap((t) => t.manifest.scenes.filter((s) => s.background.kind === "asset").map((s) => s.background.value));
     expect(uses.filter((u) => u === "night-garden").length).toBeGreaterThanOrEqual(3);
@@ -122,10 +139,11 @@ describe("manifest rules for films", () => {
     void _omit;
     const r = manifestSchema.parse(old);
     expect(r.motion).toEqual({ opening: "envelope", level: "cinematic" });
+    expect(r.site).toBeUndefined();
   });
 
   it("the customer's motion and opening choices win over the design's", () => {
-    expect(resolveMotion(garden.manifest)).toEqual({ level: "cinematic", opening: "envelope" });
+    expect(resolveMotion(garden.manifest)).toMatchObject({ level: "cinematic", opening: "envelope" });
     expect(resolveMotion(garden.manifest, { slots: {}, motion: "still", opening: "title-card" })).toEqual({ level: "still", opening: "title-card" });
   });
 });

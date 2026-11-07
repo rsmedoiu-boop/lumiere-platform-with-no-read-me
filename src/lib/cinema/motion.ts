@@ -24,17 +24,23 @@ export type RevealKey = (typeof revealKeys)[number];
 export const transitionKeys = ["fade", "rise", "dissolve", "iris", "none"] as const;
 export type TransitionKey = (typeof transitionKeys)[number];
 
-export const openingKeys = ["envelope", "curtain", "title-card", "none"] as const;
+export const openingKeys = ["envelope", "curtain", "title-card", "gilded", "none"] as const;
 export type OpeningKey = (typeof openingKeys)[number];
 
 export const openingInfo: Record<OpeningKey, { name: string; help: string }> = {
   envelope: { name: "Sealed envelope", help: "Addressed to each guest. They break the wax seal to open it." },
   curtain: { name: "Silk curtain", help: "Two silk panels part to reveal the invitation." },
   "title-card": { name: "Film title card", help: "Opens like a film: the guest's name, then yours, then the invitation." },
+  gilded: { name: "Gilded velvet envelope", help: "A velvet envelope; breaking the seal turns its embossing to gold before it opens in warm light." },
   none: { name: "No opening", help: "Guests go straight to the invitation." },
 };
 
 /** What each reveal becomes at each level. */
+/** Openings a design can offer: art-based ones only when it carries the artwork. */
+export function openingsFor(manifest: { motion: { art?: unknown } }): OpeningKey[] {
+  return openingKeys.filter((k) => k !== "gilded" || !!manifest.motion.art);
+}
+
 export function revealFor(reveal: RevealKey | undefined, level: MotionLevel): RevealKey {
   if (!reveal || level === "still") return "none";
   if (level === "gentle") return reveal === "none" ? "none" : reveal === "foil-draw" ? "foil-draw" : "settle";

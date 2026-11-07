@@ -172,6 +172,58 @@ export const templateLibrary: TemplateDefinition[] = [
       sections: ["countdown", "story", "schedule", "venue", "accommodation", "gallery", "video", "extra", "rsvp"],
     },
   }),
+  /**
+   * Golden hour in a Tuscan vineyard: a living watercolour film, a gilded
+   * velvet envelope, and a parchment website with script headings.
+   */
+  define({
+    slug: "tuscan-vineyard",
+    name: "Tuscan Vineyard",
+    tier: "premium",
+    category: "weddings",
+    occasions: ["weddings", "engagements", "anniversaries"],
+    mood: "Golden hour among the vines: a living watercolour, a gilded velvet envelope, parchment and olive branches.",
+    manifest: {
+      schemaVersion: 1,
+      theme: {
+        palette: { background: "#f6e9d3", ink: "#4a2a2e", accent: "#8a5a2b", muted: "#6f5b4b" },
+        fonts: { display: "cormorant", body: "jost", script: "pinyon" },
+        editable: { palette: true, fonts: false },
+      },
+      slots: sampleSlots,
+      motion: { opening: "gilded", level: "cinematic", art: { closed: "velvet-envelope", revealed: "velvet-envelope-gilded" } },
+      site: { paper: "parchment-olive", headings: "script" },
+      scenes: [
+        {
+          id: "golden-hour",
+          durationMs: 3400,
+          align: "start",
+          background: { kind: "asset", value: "tuscan-golden-hour", overlay: 0.6, veil: "top", parallax: true },
+          transition: "dissolve",
+          layers: [
+            { type: "ornament", name: "sprig", animation: "blur", delayMs: 300, depth: 0.5 },
+            { type: "text", slot: "lead", style: "heading", animation: "letters", delayMs: 700, depth: 0.3 },
+          ],
+        },
+        {
+          id: "card",
+          align: "start",
+          background: { kind: "asset", value: "tuscan-golden-hour", overlay: 0.95, veil: "top", parallax: true },
+          transition: "rise",
+          layers: [
+            { type: "names", layout: "caps", animation: "wipe", delayMs: 200 },
+            { type: "text", slot: "invitationLine", style: "small", animation: "settle", delayMs: 1500 },
+            { type: "ornament", name: "foil-rule", animation: "foil-draw", delayMs: 1800 },
+            { type: "text", slot: "date", style: "date", animation: "rise", delayMs: 2100 },
+            { type: "text", slot: "venue", style: "small", animation: "rise", delayMs: 2300 },
+            { type: "countdown", slot: "date" },
+            { type: "rsvp" },
+          ],
+        },
+      ],
+      sections: ["countdown", "story", "schedule", "venue", "dress_code", "accommodation", "gallery", "gifts", "extra", "rsvp"],
+    },
+  }),
 ];
 
 export const getTemplate = (slug: string) => templateLibrary.find((t) => t.slug === slug);

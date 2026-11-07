@@ -2,6 +2,7 @@
 @import "@fontsource-variable/cormorant-garamond/wght.css";
 @import "@fontsource-variable/cormorant-garamond/wght-italic.css";
 @import "@fontsource-variable/jost/index.css";
+@import "@fontsource/pinyon-script/latin-400.css";
 
 /*
  * Design tokens. Palette: "foil on silk" — midnight ink, cool silk paper,
@@ -23,6 +24,7 @@
 
   --font-display: "Cormorant Garamond Variable", "Cormorant Garamond", Georgia, serif;
   --font-sans: "Jost Variable", "Jost", ui-sans-serif, system-ui, sans-serif;
+  --font-script: "Pinyon Script", "Cormorant Garamond Variable", cursive;
 
   --radius-card: 2px;
   --radius-pill: 999px;
@@ -249,3 +251,18 @@ p {
 .inv-on-photo span {
   text-shadow: 0 0 14px color-mix(in oklab, var(--inv-bg) 85%, transparent), 0 1px 2px color-mix(in oklab, var(--inv-bg) 70%, transparent);
 }
+
+/* Guest website headings follow the design (display serif or script). */
+.ev-h2 { font-family: var(--ev-heading, var(--font-display)); }
+[data-headings="script"] .ev-h2 { font-size: 3rem; line-height: 1.25; color: var(--ev-accent); }
+@media (min-width: 640px) { [data-headings="script"] .ev-h2 { font-size: 3.75rem; } }
+
+/* On a painted paper, each section's content sits on a soft wash of the
+   paper colour, so the painted borders frame it rather than run under it. */
+[data-paper] .ev-panel {
+  background: color-mix(in oklab, var(--ev-bg) 80%, transparent);
+  padding: 2.5rem 1.25rem;
+  border-radius: 2px;
+  box-shadow: 0 0 40px 20px color-mix(in oklab, var(--ev-bg) 55%, transparent);
+}
+@media (min-width: 640px) { [data-paper] .ev-panel { padding: 3.5rem 3rem; } }

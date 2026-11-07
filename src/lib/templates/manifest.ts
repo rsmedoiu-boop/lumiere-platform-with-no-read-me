@@ -13,7 +13,7 @@ export const SCHEMA_VERSION = 1;
 
 const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex colour");
 
-export const fontKeys = ["cormorant", "jost"] as const;
+export const fontKeys = ["cormorant", "jost", "pinyon"] as const;
 export type FontKey = (typeof fontKeys)[number];
 
 /** Text and ornament reveals (see src/lib/cinema/motion for what each level does with them). */
@@ -52,7 +52,7 @@ export const layerSchema = z.discriminatedUnion("type", [
    * Whoever the invitation is from or for — a couple, one person or an
    * organisation — laid out by the design. Lets one design serve any occasion.
    */
-  z.object({ type: z.literal("names"), layout: z.enum(["stacked", "inline"]).default("stacked"), ...reveal, animation: z.enum(animationKeys).default("ink-in") }),
+  z.object({ type: z.literal("names"), layout: z.enum(["stacked", "inline", "caps"]).default("stacked"), ...reveal, animation: z.enum(animationKeys).default("ink-in") }),
   z.object({ type: z.literal("ornament"), name: z.enum(ornamentNames), ...reveal, animation: z.enum(animationKeys).default("foil-draw") }),
   z.object({ type: z.literal("image"), slot: z.string(), shape: z.enum(["arch", "circle", "full"]).default("arch"), ...reveal }),
   z.object({ type: z.literal("video"), slot: z.string() }),
@@ -70,11 +70,15 @@ export const sceneSchema = z.object({
     poster: z.string().optional(),
     /** Veil of the template's background colour over a picture, for legible lettering. */
     overlay: z.number().min(0).max(1).default(0),
+    /** Where the veil sits: evenly, or fading from the top or bottom (lettering at that end). */
+    veil: z.enum(["even", "top", "bottom"]).default("even"),
     /** Slow drift and pointer depth on the background (Cinematic only). */
     parallax: z.boolean().default(false),
   }),
   layers: z.array(layerSchema).min(1),
   transition: z.enum(transitionKeys).default("fade"),
+  /** Where the lettering sits on the card. */
+  align: z.enum(["center", "start", "end"]).default("center"),
   /** How long a prelude scene holds before the next; ignored for the final scene. */
   durationMs: z.number().int().min(1200).max(12000).optional(),
 });
@@ -107,7 +111,8 @@ export const manifestSchema = z
     schemaVersion: z.literal(SCHEMA_VERSION),
     theme: z.object({
       palette: z.object({ background: hex, ink: hex, accent: hex, muted: hex }),
-      fonts: z.object({ display: z.enum(fontKeys), body: z.enum(fontKeys) }),
+      /** script: optional handwritten face for flourishes and website headings. */
+      fonts: z.object({ display: z.enum(fontKeys), body: z.enum(fontKeys), script: z.enum(fontKeys).optional() }),
       editable: z.object({ palette: z.boolean(), fonts: z.boolean() }),
     }),
     slots: z.array(slotSchema).min(1),
@@ -122,8 +127,19 @@ export const manifestSchema = z
       .object({
         opening: z.enum(openingKeys).default("envelope"),
         level: z.enum(motionLevels).default("cinematic"),
+        /** Artwork for art-based openings ("gilded"): shared asset ids. */
+        art: z.object({ closed: z.string(), revealed: z.string() }).optional(),
       })
       .default({ opening: "envelope", level: "cinematic" }),
+    /** How the guest website wears this design. */
+    site: z
+      .object({
+        /** A shared asset used as the website's paper, behind every section. */
+        paper: z.string().optional(),
+        /** Section headings in the display face, or the design's script face. */
+        headings: z.enum(["display", "script"]).default("display"),
+      })
+      .optional(),
   })
   .superRefine((m, ctx) => {
     const final = m.scenes[m.scenes.length - 1];

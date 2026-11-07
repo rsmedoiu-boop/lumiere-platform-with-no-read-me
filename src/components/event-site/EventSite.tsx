@@ -17,6 +17,15 @@ import {
 } from "@/lib/events/site";
 import type { InvitedMember } from "@/lib/rsvp/schema";
 import { brand } from "@/lib/brand";
+import { getAsset } from "@/lib/cinema/assets";
+import type { Manifest } from "@/lib/templates/manifest";
+
+/** URLs for a design's opening artwork, when it has any. */
+function openingArt(m: Manifest) {
+  const closed = m.motion.art && getAsset(m.motion.art.closed);
+  const revealed = m.motion.art && getAsset(m.motion.art.revealed);
+  return closed && revealed ? { closed: closed.src, revealed: revealed.src } : undefined;
+}
 import { Backdrop, OpeningSequence } from "./OpeningSequence";
 import { LiveCountdown } from "./LiveCountdown";
 import { RsvpForm } from "./RsvpForm";
@@ -51,13 +60,18 @@ export function EventSite({
   ).replace(/^\w+ /, "");
   const monogram = event.hosts.map((h) => h[0]).join("&");
 
+  const site = template.manifest.site;
+  const paper = site?.paper ? getAsset(site.paper)?.src : undefined;
   const vars = {
+    // Website headings: the design's script face, or its display face.
+    "--ev-heading": site?.headings === "script" ? "var(--font-script)" : "var(--font-display)",
     "--ev-bg": theme.palette.background,
     "--ev-ink": theme.palette.ink,
     "--ev-accent": theme.palette.accent,
     "--ev-muted": theme.palette.muted,
     "--ev-line": `color-mix(in oklab, ${theme.palette.accent} 30%, transparent)`,
-    "--ev-raise": `color-mix(in oklab, ${theme.palette.background} 88%, white)`,
+    // On a painted paper the raised sections are a light wash, so the paper shows through.
+    "--ev-raise": paper ? `color-mix(in oklab, ${theme.palette.background} 55%, transparent)` : `color-mix(in oklab, ${theme.palette.background} 88%, white)`,
     background: theme.palette.background,
     color: theme.palette.ink,
   } as CSSProperties;
@@ -68,6 +82,8 @@ export function EventSite({
       palette={theme.palette}
       backdrop={event.media?.backdrop}
       backdropVideo={event.media?.backdropVideo}
+      art={openingArt(template.manifest)}
+      paper={paper}
       addressee={household.name}
       monogram={monogram}
       title={namesLabel(resolveNames(content.slots)) || hostsLabel}
@@ -82,7 +98,11 @@ export function EventSite({
         />
       }
     >
-      <div style={vars} className="min-h-screen">
+      <div style={vars} className="relative isolate min-h-screen" data-headings={site?.headings ?? "display"} data-paper={paper ? "" : undefined}>
+        {paper && (
+          // The design's paper stays put while the page scrolls over it.
+          <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-cover bg-center" style={{ backgroundImage: `url(${paper})` }} />
+        )}
         {preview && (
           <p className="bg-[color:var(--ev-accent)] px-4 py-2 text-center text-xs text-[color:var(--ev-bg)]">
             Template preview with sample details. Replies here aren&apos;t
@@ -372,8 +392,8 @@ function Section({
       className="scroll-mt-16 px-5 py-20 sm:py-24"
       style={raised ? { background: "var(--ev-raise)" } : undefined}
     >
-      <div className="mx-auto max-w-5xl">
-        <h2 className="mb-12 text-center font-display text-4xl sm:text-5xl">
+      <div className="ev-panel mx-auto max-w-5xl">
+        <h2 className="ev-h2 mb-12 text-center text-4xl sm:text-5xl">
           {title}
         </h2>
         {children}

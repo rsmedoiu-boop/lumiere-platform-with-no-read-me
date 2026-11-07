@@ -37,13 +37,17 @@ interface Props {
   continueLabel?: string;
   backdrop?: string;
   backdropVideo?: string;
+  /** Artwork for the gilded opening: the closed envelope and its gold-foil twin. */
+  art?: { closed: string; revealed: string };
+  /** The design's paper, shown behind the card once an art-based opening has played. */
+  paper?: string;
   children: ReactNode;
 }
 
-const OPEN_MS: Record<OpeningKey, number> = { envelope: 1100, curtain: 1500, "title-card": 6200, none: 0 };
+const OPEN_MS: Record<OpeningKey, number> = { envelope: 1100, curtain: 1500, "title-card": 6200, gilded: 3000, none: 0 };
 
 export function OpeningSequence({
-  opening,
+  opening: requested,
   palette,
   addressee,
   monogram,
@@ -53,8 +57,12 @@ export function OpeningSequence({
   continueLabel = "View the details",
   backdrop,
   backdropVideo,
+  art,
+  paper,
   children,
 }: Props) {
+  // An art-based opening without its artwork falls back to the classic envelope.
+  const opening: OpeningKey = requested === "gilded" && !art ? "envelope" : requested;
   const [stage, setStage] = useState<Stage>(opening === "none" ? "card" : "closed");
   const [plays, setPlays] = useState(0);
   const continueRef = useRef<HTMLButtonElement>(null);
@@ -109,7 +117,8 @@ export function OpeningSequence({
           aria-label="Your invitation"
           data-opening={opening}
         >
-          {opening !== "title-card" && <Backdrop image={backdrop} video={backdropVideo} tint={palette.background} />}
+          {opening !== "title-card" && opening !== "gilded" && <Backdrop image={backdrop} video={backdropVideo} tint={palette.background} />}
+          {opening === "gilded" && stage === "card" && <Backdrop image={paper ?? backdrop} video={paper ? undefined : backdropVideo} tint={palette.background} fade={paper ? 0.1 : 0.35} />}
 
           {stage !== "card" && opening === "envelope" && (
             <div className="relative flex flex-col items-center">
@@ -124,6 +133,8 @@ export function OpeningSequence({
           )}
 
           {stage !== "card" && opening === "curtain" && <Curtain opening={stage === "opening"} onOpen={open} addressee={addressee} monogram={monogram} />}
+
+          {stage !== "card" && opening === "gilded" && art && <GildedEnvelope opening={stage === "opening"} onOpen={open} addressee={addressee} monogram={monogram} art={art} />}
 
           {stage !== "card" && opening === "title-card" && <TitleCard playing={stage === "opening"} onBegin={open} addressee={addressee} title={title} />}
 
@@ -251,6 +262,92 @@ function Curtain({ opening, onOpen, addressee, monogram }: { opening: boolean; o
           <WaxSeal monogram={monogram} />
         </button>
         <p className="mt-8 text-sm tracking-wide text-[color:var(--op-muted)]">Tap to open</p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Gilded velvet envelope (art-based)
+// ---------------------------------------------------------------------------
+/**
+ * The envelope is two paintings of the same velvet: plain, and with its
+ * embossing turned to gold foil. Breaking the seal blooms the gold outwards
+ * from the seal, then the envelope opens in warm light.
+ */
+function GildedEnvelope({
+  opening,
+  onOpen,
+  addressee,
+  monogram,
+  art,
+}: {
+  opening: boolean;
+  onOpen: () => void;
+  addressee: string;
+  monogram: string;
+  art: { closed: string; revealed: string };
+}) {
+  return (
+    <div className="fixed inset-0 z-10 flex items-center justify-center bg-[#2a0d14]">
+      <div className="relative h-full max-h-[100dvh] w-full max-w-[calc(100dvh*9/16)] overflow-hidden">
+        {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed artwork */}
+        <img src={art.closed} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />
+        {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed artwork */}
+        <img
+          src={art.revealed}
+          alt=""
+          aria-hidden
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{
+            clipPath: opening ? "circle(150% at 50% 54%)" : "circle(0% at 50% 54%)",
+            transition: "clip-path 1600ms cubic-bezier(0.55, 0, 0.3, 1) 150ms",
+          }}
+        />
+        {/* Warm light as it opens */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: "radial-gradient(60% 45% at 50% 54%, #fff3d6 0%, rgba(255,226,160,0.85) 35%, rgba(255,214,140,0) 75%)",
+            opacity: opening ? 1 : 0,
+            transform: opening ? "scale(2.4)" : "scale(0.4)",
+            transition: "opacity 900ms ease 1700ms, transform 1300ms cubic-bezier(0.3, 0, 0.2, 1) 1700ms",
+          }}
+        />
+        <p
+          className="absolute inset-x-0 top-[9%] text-center text-[clamp(26px,7vw,40px)] text-[#e9dcc3]"
+          style={{ fontFamily: "var(--font-script)", opacity: opening ? 0 : 1, transition: "opacity 500ms" }}
+        >
+          For {addressee}
+        </p>
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={opening}
+          aria-label="Open your invitation"
+          className="group absolute left-1/2 top-[54%] -translate-x-1/2 -translate-y-1/2 rounded-full p-3"
+        >
+          <span
+            className="grid h-[84px] w-[84px] place-items-center rounded-full transition-transform duration-300 group-hover:scale-105 group-focus-visible:scale-105"
+            style={{
+              background: opening
+                ? "radial-gradient(circle at 35% 30%, #fff6dc, #e6c574 50%, #a07a2c)"
+                : "radial-gradient(circle at 35% 30%, #fbfaf6, #d9d4c9 50%, #9c978d)",
+              boxShadow: opening
+                ? "0 0 0 2px rgba(255,230,170,0.5), 0 0 40px 12px rgba(255,214,140,0.75), inset 0 -3px 6px rgba(0,0,0,0.2)"
+                : "0 8px 18px -6px rgba(0,0,0,0.7), inset 0 -3px 6px rgba(0,0,0,0.18)",
+              transition: "background 700ms ease, box-shadow 900ms ease",
+            }}
+          >
+            <span className="font-display text-2xl italic" style={{ color: opening ? "#7a5717" : "#7d786f", transition: "color 700ms" }}>
+              {monogram}
+            </span>
+          </span>
+        </button>
+        <p className="absolute inset-x-0 bottom-[8%] text-center text-sm tracking-wide text-[#d8c9b0]" style={{ opacity: opening ? 0 : 0.9, transition: "opacity 400ms" }}>
+          Tap the seal to open
+        </p>
       </div>
     </div>
   );

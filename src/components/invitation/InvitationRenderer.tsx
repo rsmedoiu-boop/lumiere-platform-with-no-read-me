@@ -25,7 +25,7 @@ import { Countdown } from "./Countdown";
 import { Ornament } from "./Ornament";
 import { ParallaxRoot } from "./ParallaxRoot";
 
-const fontVar = { cormorant: "var(--font-display)", jost: "var(--font-sans)" } as const;
+const fontVar = { cormorant: "var(--font-display)", jost: "var(--font-sans)", pinyon: "var(--font-script)" } as const;
 const LETTER_STEP_MS = 55;
 
 interface Props {
@@ -47,8 +47,9 @@ interface Props {
 
 const textStyles: Record<string, CSSProperties> = {
   names: { fontFamily: "var(--inv-display)", fontSize: "13cqi", lineHeight: 0.95, fontWeight: 400 },
-  script: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "8cqi", color: "var(--inv-accent)", lineHeight: 1 },
-  heading: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "9cqi", lineHeight: 1.1, color: "var(--inv-accent)" },
+  // Flourishes use the design's script face if it has one, else display italic.
+  script: { fontFamily: "var(--inv-script)", fontStyle: "var(--inv-script-style)" as CSSProperties["fontStyle"], fontSize: "8cqi", color: "var(--inv-accent)", lineHeight: 1.1 },
+  heading: { fontFamily: "var(--inv-script)", fontStyle: "var(--inv-script-style)" as CSSProperties["fontStyle"], fontSize: "9cqi", lineHeight: 1.2, color: "var(--inv-accent)" },
   body: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "4.4cqi", maxWidth: "70cqi", lineHeight: 1.35 },
   date: { fontSize: "3.6cqi", letterSpacing: "0.08em", fontWeight: 450 },
   small: { fontSize: "3.1cqi", letterSpacing: "0.06em", color: "var(--inv-muted)", maxWidth: "72cqi", lineHeight: 1.45 },
@@ -88,6 +89,8 @@ export function InvitationRenderer({
     "--inv-muted": theme.palette.muted,
     "--inv-display": fontVar[theme.fonts.display],
     "--inv-body": fontVar[theme.fonts.body],
+    "--inv-script": theme.fonts.script ? fontVar[theme.fonts.script] : "var(--inv-display)",
+    "--inv-script-style": theme.fonts.script ? "normal" : "italic",
     background: theme.palette.background,
     color: "var(--inv-ink)",
     fontFamily: "var(--inv-body)",
@@ -190,11 +193,11 @@ export function InvitationRenderer({
           <section
             key={scene.id}
             aria-hidden={!isFinal}
-            className={`inv-scene absolute inset-0 flex items-center justify-center ${isFinal ? "" : "inv-prelude"} ${isMedia(scene.background) ? "inv-on-photo" : ""}`}
-            style={{ animation, zIndex: t.index + 1, padding: "9cqi 8cqi" }}
+            className={`inv-scene absolute inset-0 flex justify-center ${scene.align === "start" ? "items-start" : scene.align === "end" ? "items-end" : "items-center"} ${isFinal ? "" : "inv-prelude"} ${isMedia(scene.background) ? "inv-on-photo" : ""}`}
+            style={{ animation, zIndex: t.index + 1, padding: scene.align === "start" ? "11cqi 8cqi 9cqi" : "9cqi 8cqi" }}
           >
             {sameAsShared(scene.background) ? (
-              <Veil amount={scene.background.overlay} />
+              <Veil amount={scene.background.overlay} from={scene.background.veil} />
             ) : (
               <SceneBackground background={scene.background} level={level} />
             )}
@@ -252,7 +255,7 @@ function Reveal({ as: Tag, text, reveal, delay, style }: { as: "p" | "span"; tex
   );
 }
 
-function Names({ names, layout, reveal, delay }: { names: NamesShape | null; layout: "stacked" | "inline"; reveal: RevealKey; delay: number }) {
+function Names({ names, layout, reveal, delay }: { names: NamesShape | null; layout: "stacked" | "inline" | "caps"; reveal: RevealKey; delay: number }) {
   if (!names) return null;
   const big = textStyles.names;
   const amp = textStyles.script;
@@ -263,6 +266,17 @@ function Names({ names, layout, reveal, delay }: { names: NamesShape | null; lay
     }
     const ampDelay = letters ? delay + names.first.length * LETTER_STEP_MS : delay + 700;
     const secondDelay = letters ? ampDelay + 300 : delay + 900;
+    if (layout === "caps") {
+      // Engraved capitals with a small "and" between: classic stationery.
+      const caps: CSSProperties = { ...big, fontSize: "10.5cqi", textTransform: "uppercase", letterSpacing: "0.06em", lineHeight: 1 };
+      return (
+        <div className="flex flex-col items-center gap-[1cqi]">
+          <Reveal as="p" text={names.first} reveal={reveal} delay={delay} style={caps} />
+          <Reveal as="p" text="and" reveal={letters ? "blur" : reveal} delay={ampDelay} style={{ ...textStyles.small, fontSize: "3.6cqi", letterSpacing: "0.1em", color: "var(--inv-ink)" }} />
+          <Reveal as="p" text={names.second} reveal={reveal} delay={secondDelay} style={caps} />
+        </div>
+      );
+    }
     return (
       <div className="flex flex-col items-center gap-[1.2cqi]">
         <Reveal as="p" text={names.first} reveal={reveal} delay={delay} style={big} />
@@ -287,9 +301,14 @@ function Names({ names, layout, reveal, delay }: { names: NamesShape | null; lay
   );
 }
 
-function Veil({ amount }: { amount: number }) {
+/** A wash of the paper colour over a picture, even or fading from one end, so lettering stays legible. */
+function Veil({ amount, from = "even" }: { amount: number; from?: "even" | "top" | "bottom" }) {
   if (!amount) return null;
-  return <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "var(--inv-bg)", opacity: amount }} />;
+  const background =
+    from === "even"
+      ? "var(--inv-bg)"
+      : `linear-gradient(${from === "top" ? "180deg" : "0deg"}, var(--inv-bg) 0%, color-mix(in oklab, var(--inv-bg) 92%, transparent) 40%, color-mix(in oklab, var(--inv-bg) 60%, transparent) 56%, transparent 74%)`;
+  return <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background, opacity: amount }} />;
 }
 
 /** Colour, gradient, image or a shared cinematic asset (with its loop). */
@@ -311,7 +330,7 @@ function SceneBackground({ background: b, level, shared = false }: { background:
         {video && <video className="inv-video absolute inset-0 h-full w-full object-cover" src={video} poster={still} autoPlay muted loop playsInline preload="metadata" />}
       </div>
       {/* A shared background carries no veil of its own: each scene adds its own. */}
-      {!shared && <Veil amount={b.overlay} />}
+      {!shared && <Veil amount={b.overlay} from={b.veil} />}
     </div>
   );
 }
