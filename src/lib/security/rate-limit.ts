@@ -27,8 +27,10 @@ async function clientIp() {
 export async function rateLimit(name: LimitName, subject = ""): Promise<{ ok: boolean; retryAfter: number }> {
   const admin = createSupabaseAdminClient();
   if (!admin) {
-    if (process.env.NODE_ENV === "production") return { ok: false, retryAfter: 60 };
-    return { ok: true, retryAfter: 0 };
+    // Local testing of a production build can opt out explicitly; deployed
+    // environments never set this, so they fail closed without a key.
+    const allowWithoutKey = process.env.NODE_ENV !== "production" || process.env.LOCAL_ALLOW_NO_RATE_LIMIT === "1";
+    return allowWithoutKey ? { ok: true, retryAfter: 0 } : { ok: false, retryAfter: 60 };
   }
   const { limit, windowSeconds } = limits[name];
   const key = createHash("sha256").update(`${name}|${await clientIp()}|${subject.toLowerCase()}`).digest("hex");

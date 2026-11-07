@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rateLimit, tooMany } from "@/lib/security/rate-limit";
 
-export type AuthState = { error?: string; message?: string; fields?: Record<string, string> } | undefined;
+export type AuthState = { error?: string; message?: string; fields?: Record<string, string>; unconfirmed?: boolean } | undefined;
 
 const safeNext = (v: FormDataEntryValue | null) => {
   const s = typeof v === "string" ? v : "";
@@ -27,7 +27,11 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   if (!supabase) return { error: "Sign-in isn't connected yet. Add the Supabase settings to .env.local." };
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error?.code === "email_not_confirmed") {
-    return { error: "Please confirm your email first: use the link we sent when you registered.", fields: { email: parsed.data.email } };
+    return {
+      error: "Please confirm your email first: use the link we sent when you registered.",
+      fields: { email: parsed.data.email },
+      unconfirmed: true,
+    };
   }
   // Same message for unknown email and wrong password: don't reveal which accounts exist.
   if (error) return { error: "That email and password don't match an account.", fields: { email: parsed.data.email } };
@@ -85,4 +89,20 @@ export async function signOut() {
   const supabase = await createSupabaseServerClient();
   await supabase?.auth.signOut();
   redirect("/");
+}
+
+export async function resendConfirmation(_: AuthState, form: FormData): Promise<AuthState> {
+  const email = z.email().safeParse(form.get("email"));
+  if (!email.success) return { error: "Enter a valid email address" };
+  const rl = await rateLimit("passwordReset", `confirm:${email.data}`);
+  if (!rl.ok) return { error: tooMany(rl.retryAfter), fields: { email: email.data }, unconfirmed: true };
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) return { error: "Sign-in isn't connected yet." };
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const { error } = await supabase.auth.resend({ type: "signup", email: email.data, options: { emailRedirectTo: `${site}/auth/confirm` } });
+  if (error?.code === "over_email_send_rate_limit") {
+    return { error: "We've sent several emails already. Please wait a little and try again.", fields: { email: email.data }, unconfirmed: true };
+  }
+  // Same answer whether or not the account exists.
+  return { message: "If that account is waiting for confirmation, a new link is on its way. It works for one hour.", fields: { email: email.data } };
 }
