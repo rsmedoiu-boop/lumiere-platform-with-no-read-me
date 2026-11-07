@@ -10,7 +10,7 @@ export interface StudioProject {
   draftVersion: number;
   sections: string[];
   templateSlug: string;
-  event: { id: string; title: string; slug: string; startsAt: string | null; occasion: string; settings: Record<string, boolean> };
+  event: { id: string; title: string; slug: string; timezone: string; startsAt: string | null; occasion: string; settings: Record<string, boolean> };
 }
 
 /** One invitation the signed-in customer owns (RLS returns nothing otherwise). */
@@ -20,12 +20,12 @@ export async function getStudioProject(id: string): Promise<StudioProject | null
   if (!supabase) return null;
   const { data } = await supabase
     .from("invitation_projects")
-    .select("id, kind, draft_content, draft_version, sections, templates(slug), events(id, title, slug, starts_at, details, categories(slug))")
+    .select("id, kind, draft_content, draft_version, sections, templates(slug), events(id, title, slug, timezone, starts_at, details, categories(slug))")
     .eq("id", id)
     .maybeSingle();
   if (!data) return null;
   const t = data.templates as unknown as { slug: string } | null;
-  const e = data.events as unknown as { id: string; title: string; slug: string; starts_at: string | null; details: { settings?: Record<string, boolean> } | null; categories: { slug: string } | null } | null;
+  const e = data.events as unknown as { id: string; title: string; slug: string; timezone: string; starts_at: string | null; details: { settings?: Record<string, boolean> } | null; categories: { slug: string } | null } | null;
   if (!t || !e) return null;
   const content = contentSchema.safeParse(data.draft_content);
   return {
@@ -35,6 +35,6 @@ export async function getStudioProject(id: string): Promise<StudioProject | null
     draftVersion: data.draft_version,
     sections: data.sections ?? [],
     templateSlug: t.slug,
-    event: { id: e.id, title: e.title, slug: e.slug, startsAt: e.starts_at, occasion: e.categories?.slug ?? "weddings", settings: e.details?.settings ?? {} },
+    event: { id: e.id, title: e.title, slug: e.slug, timezone: e.timezone, startsAt: e.starts_at, occasion: e.categories?.slug ?? "weddings", settings: e.details?.settings ?? {} },
   };
 }
