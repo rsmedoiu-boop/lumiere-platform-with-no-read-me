@@ -15,6 +15,9 @@ const url = process.env.DATABASE_URL;
 const root = join(__dirname, "..", "..", "supabase");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
 
+/** Owner connection: builds the schema and fixtures that need superuser. */
+let admin: Client;
+/** API-like connection: logs in as `authenticator` (as Supabase's API does), then switches role. */
 let db: Client;
 
 /** Run `fn` as a signed-in customer, with RLS applied, inside a rolled-back transaction. */
@@ -55,8 +58,8 @@ const one = async <T = Record<string, unknown>>(sql: string, params: unknown[] =
   (await db.query(sql, params)).rows[0] as T;
 
 async function createUser(email: string): Promise<string> {
-  const r = await one<{ id: string }>("insert into auth.users (email) values ($1) returning id", [email]);
-  return r.id;
+  const r = await admin.query("insert into auth.users (email) values ($1) returning id", [email]);
+  return r.rows[0].id;
 }
 
 interface Fixture {
@@ -72,7 +75,7 @@ interface Fixture {
 async function buildWedding(): Promise<Fixture> {
   const alice = await createUser(`alice-${Math.random()}@test.dev`);
   const bob = await createUser(`bob-${Math.random()}@test.dev`);
-  const cat = await one<{ id: string }>("select id from categories where slug = 'weddings'");
+  const cat = (await admin.query("select id from categories where slug = 'weddings'")).rows[0] as { id: string };
 
   return asUserCommit(alice, async () => {
     const slug = `sarah-and-james-${Math.floor(Math.random() * 1e9)}`;
@@ -116,15 +119,27 @@ run("database rules", () => {
   let f: Fixture;
 
   beforeAll(async () => {
-    db = new Client({ connectionString: url });
-    await db.connect();
-    await db.query("drop schema if exists public cascade; drop schema if exists auth cascade; create schema public;");
-    await db.query(read("tests/local_supabase_shim.sql"));
+    admin = new Client({ connectionString: url });
+    await admin.connect();
+    await admin.query(
+      "drop schema if exists public cascade; drop schema if exists auth cascade; drop schema if exists storage cascade; create schema public;",
+    );
+    await admin.query(read("tests/local_supabase_shim.sql"));
+    await admin.query(read("tests/local_grants.sql"));
     for (const file of readdirSync(join(root, "migrations")).sort()) {
-      await db.query(read(join("migrations", file)));
+      await admin.query(read(join("migrations", file)));
     }
-    await db.query(read("tests/local_grants.sql"));
-    await db.query(read("seed.sql"));
+    await admin.query(read("seed.sql"));
+    await admin.query(`do $$ begin
+      if not exists (select 1 from pg_roles where rolname = 'authenticator') then
+        create role authenticator login noinherit password 'authenticator';
+      end if; end $$;
+      grant anon, authenticated, service_role to authenticator;`);
+    const apiUrl = new URL(url!);
+    apiUrl.username = "authenticator";
+    apiUrl.password = "authenticator";
+    db = new Client({ connectionString: apiUrl.toString() });
+    await db.connect();
   });
 
   beforeEach(async () => {
@@ -133,16 +148,17 @@ run("database rules", () => {
 
   afterAll(async () => {
     await db?.end();
+    await admin?.end();
   });
 
-  it("creates 27 tables, all with row level security on", async () => {
-    const r = await one<{ total: string; rls: string }>(
+  it("creates 28 tables, all with row level security on", async () => {
+    const r = (await admin.query(
       `select count(*) total, count(*) filter (where c.relrowsecurity) rls
          from pg_class c join pg_namespace n on n.oid = c.relnamespace
         where n.nspname = 'public' and c.relkind = 'r'`,
-    );
-    expect(Number(r.total)).toBe(27);
-    expect(Number(r.rls)).toBe(27);
+    )).rows[0] as { total: string; rls: string };
+    expect(Number(r.total)).toBe(28); // 27 core + rate_limits
+    expect(Number(r.rls)).toBe(28);
   });
 
   it("reports the brief's example: 150 capacity, 128 confirmed, 22 available", async () => {
@@ -266,12 +282,12 @@ run("database rules", () => {
 
   it("guests and tables from different events can never be mixed", async () => {
     const other = await buildWedding();
-    await db.query("begin");
     // Even with RLS bypassed (superuser), the composite keys refuse it.
-    await fails("insert into guest_assignments (event_id, plan_id, guest_id, table_id) values ($1, $2, $3, $4)", [
+    await expect(
+      admin.query("insert into guest_assignments (event_id, plan_id, guest_id, table_id) values ($1, $2, $3, $4)", [
         f.eventId, f.planId, other.guestIds[131], f.tableIds[14],
-      ], /foreign key/);
-    await db.query("rollback");
+      ]),
+    ).rejects.toThrow(/foreign key/);
   });
 
   it("seat numbers follow table capacity and a seat holds one guest", async () => {
@@ -289,6 +305,88 @@ run("database rules", () => {
         ], /duplicate key/);
       // Can't shrink a table below the guests sitting at it.
       await fails("update venue_tables set capacity = 5 where id = $1", [f.tableIds[0]], /capacity cannot be 5/);
+    });
+  });
+
+  // ---------------------------------------------------------------- Milestone 2
+
+  it("storage: owners use their event folder; nobody else can read or write it", async () => {
+    const path = `${f.eventId}/photo.jpg`;
+    await asUser(f.alice, async () => {
+      await db.query("insert into storage.objects (bucket_id, name) values ('event-media', $1)", [path]);
+      expect((await db.query("select * from storage.objects where name = $1", [path])).rowCount).toBe(1);
+      // Exports are written by the server only.
+      await fails("insert into storage.objects (bucket_id, name) values ('exports', $1)", [`${f.eventId}/v1/chart.pdf`], /row-level security/);
+      // A path that doesn't start with an event id is refused, not an error.
+      await fails("insert into storage.objects (bucket_id, name) values ('event-media', 'not-a-uuid/x.jpg')", [], /row-level security/);
+    });
+    await admin.query("insert into storage.objects (bucket_id, name) values ('event-media', $1)", [path]);
+    await asUser(f.bob, async () => {
+      expect((await db.query("select * from storage.objects where name = $1", [path])).rowCount).toBe(0);
+      await fails("insert into storage.objects (bucket_id, name) values ('event-media', $1)", [`${f.eventId}/evil.jpg`], /row-level security/);
+    });
+    const buckets = (await admin.query("select id, public from storage.buckets order by id")).rows;
+    expect(buckets).toEqual([{ id: "event-media", public: false }, { id: "exports", public: false }]);
+  });
+
+  it("rate limiting: only the server can call it, and it blocks after the limit", async () => {
+    await asUser(f.alice, async () => {
+      await fails("select * from hit_rate_limit('login:x', 3, 60)", [], /permission denied/);
+    });
+    await db.query("begin");
+    await db.query("set local role service_role");
+    const key = `login:${Math.random()}`;
+    const results = [];
+    for (let i = 0; i < 4; i++) results.push((await db.query("select * from hit_rate_limit($1, 3, 60)", [key])).rows[0]);
+    await db.query("rollback");
+    expect(results.map((r) => r.allowed)).toEqual([true, true, true, false]);
+    expect(results[2].remaining).toBe(0);
+    expect(results[3].retry_after_seconds).toBeGreaterThan(0);
+  });
+
+  it("export my data: complete for the owner, empty for anyone else", async () => {
+    const mine = await asUser(f.alice, () => one<{ d: any }>("select export_my_data() d"));
+    expect(mine.d.profile.id).toBe(f.alice);
+    expect(mine.d.events).toHaveLength(1);
+    expect(mine.d.events[0].guests).toHaveLength(140);
+    expect(mine.d.events[0].seat_assignments).toHaveLength(128);
+    const bobs = await asUser(f.bob, () => one<{ d: any }>("select export_my_data() d"));
+    expect(bobs.d.events).toEqual([]);
+  });
+
+  it("account deletion: 14-day grace, then everything goes except detached order records", async () => {
+    await admin.query(
+      "insert into orders (customer_id, event_id, status, subtotal_amount, total_amount) values ($1, $2, 'paid', 11999, 11999)",
+      [f.alice, f.eventId],
+    );
+    await admin.query("update profiles set full_name = 'Alice Example' where id = $1", [f.alice]);
+    const until = await asUserCommit(f.alice, () => one<{ d: Date }>("select request_account_deletion() d"));
+    const days = (new Date(until.d).getTime() - Date.now()) / 86_400_000;
+    expect(Math.round(days)).toBe(14);
+
+    // Inside the grace period nothing is removed.
+    expect((await admin.query("select purge_deleted_accounts() n")).rows[0]).toEqual({ n: 0 });
+    // Simulate the 14 days passing.
+    await admin.query("update profiles set deleted_requested_at = now() - interval '15 days' where id = $1", [f.alice]);
+    const purged = (await admin.query("select purge_deleted_accounts() n")).rows[0].n;
+    expect(purged).toBeGreaterThanOrEqual(1);
+    expect((await admin.query("select 1 from auth.users where id = $1", [f.alice])).rowCount).toBe(0);
+    expect((await admin.query("select 1 from events where id = $1", [f.eventId])).rowCount).toBe(0);
+    expect((await admin.query("select 1 from guests where event_id = $1", [f.eventId])).rowCount).toBe(0);
+    const order = (await admin.query("select customer_id, billing_name, total_amount from orders where event_id is null and billing_name = 'Alice Example'")).rows[0];
+    expect(order).toEqual({ customer_id: null, billing_name: "Alice Example", total_amount: 11999 });
+  });
+
+  it("roles: customers can't grant roles; the owner can bootstrap an admin, who then sees all events", async () => {
+    const email = (await admin.query("select email from auth.users where id = $1", [f.bob])).rows[0].email;
+    await asUser(f.alice, async () => {
+      await fails("select set_user_role($1, 'admin')", [email], /Only administrators/);
+    });
+    await admin.query("select set_user_role($1, 'admin')", [email]);
+    await asUser(f.bob, async () => {
+      expect((await db.query("select 1 from events where id = $1", [f.eventId])).rowCount).toBe(1);
+      // Staff read access is not write access.
+      expect((await db.query("update events set title = 'x' where id = $1", [f.eventId])).rowCount).toBe(0);
     });
   });
 });

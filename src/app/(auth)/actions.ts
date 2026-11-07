@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { rateLimit, tooMany } from "@/lib/security/rate-limit";
 
 export type AuthState = { error?: string; message?: string; fields?: Record<string, string> } | undefined;
 
@@ -20,6 +21,8 @@ const signInSchema = z.object({
 export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   const parsed = signInSchema.safeParse({ email: form.get("email"), password: form.get("password") });
   if (!parsed.success) return { error: parsed.error.issues[0].message, fields: { email: String(form.get("email") ?? "") } };
+  const rl = await rateLimit("login", parsed.data.email);
+  if (!rl.ok) return { error: tooMany(rl.retryAfter), fields: { email: parsed.data.email } };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Sign-in isn't connected yet. Add the Supabase settings to .env.local." };
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
@@ -45,6 +48,8 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   const parsed = signUpSchema.safeParse(raw);
   const fields = { fullName: String(raw.fullName ?? ""), email: String(raw.email ?? "") };
   if (!parsed.success) return { error: parsed.error.issues[0].message, fields };
+  const rl = await rateLimit("signup");
+  if (!rl.ok) return { error: tooMany(rl.retryAfter), fields };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Registration isn't connected yet. Add the Supabase settings to .env.local.", fields };
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -63,6 +68,8 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
 export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
   const email = z.email().safeParse(form.get("email"));
   if (!email.success) return { error: "Enter a valid email address" };
+  const rl = await rateLimit("passwordReset", email.data);
+  if (!rl.ok) return { error: tooMany(rl.retryAfter) };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Password reset isn't connected yet." };
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
