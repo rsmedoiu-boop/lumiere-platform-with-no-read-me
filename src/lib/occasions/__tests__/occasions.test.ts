@@ -97,7 +97,7 @@ describe("templates and occasions", () => {
   });
 
   it("filters the gallery by occasion", () => {
-    expect(templatesFor("weddings", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera", "tuscan-vineyard"]);
+    expect(templatesFor("weddings", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera", "tuscan-vineyard", "amalfi-terrace", "blossom-lane", "celestial"]);
     expect(templatesFor("birthdays", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow", "midnight-garden"]);
     expect(templatesFor("corporate", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow"]);
     expect(templatesFor("nope", templateLibrary)).toEqual([]);

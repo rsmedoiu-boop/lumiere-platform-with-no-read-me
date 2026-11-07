@@ -23,6 +23,7 @@ import { getAsset } from "@/lib/cinema/assets";
 import { monogramOf, resolveNames, type NamesShape } from "@/lib/cinema/names";
 import { Countdown } from "./Countdown";
 import { Ornament } from "./Ornament";
+import { Ambient, Celestial } from "./Ambient";
 import { ParallaxRoot } from "./ParallaxRoot";
 
 const fontVar = { cormorant: "var(--font-display)", jost: "var(--font-sans)", pinyon: "var(--font-script)" } as const;
@@ -169,6 +170,8 @@ export function InvitationRenderer({
             RSVP
           </span>
         );
+      case "celestial":
+        return <Celestial orbit={layer.orbit && level !== "still"} size={layer.size} delay={delay} level={level} />;
       default:
         return null;
     }
@@ -201,6 +204,7 @@ export function InvitationRenderer({
             ) : (
               <SceneBackground background={scene.background} level={level} />
             )}
+            {scene.ambient && level !== "still" && <Ambient kind={scene.ambient} level={level} />}
             {isFinal && (
               <div aria-hidden className="pointer-events-none absolute" style={{ inset: "3.5cqi", border: "1px solid color-mix(in oklab, var(--inv-accent) 55%, transparent)" }} />
             )}

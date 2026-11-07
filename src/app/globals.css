@@ -213,6 +213,61 @@ p {
   .inv-plx { transform: none; }
 }
 
+
+/* ---- Looping atmosphere (Ambient.tsx) ---- */
+.amb-strip { position: absolute; top: 0; height: 100%; width: var(--s); animation: amb-fall var(--fall) linear var(--o) infinite; }
+.amb-strip .amb-p { position: absolute; left: 0; top: 0; display: block; width: var(--s); height: var(--s); animation: amb-sway var(--sway) ease-in-out var(--o) infinite alternate; }
+.inv-ambient-petals .amb-p { background: radial-gradient(ellipse at 30% 25%, #fff 0%, #fbd3dc 55%, #f3a9bd 100%); border-radius: 100% 0 100% 0; opacity: 0.9; box-shadow: 0 0 1cqi rgba(255, 190, 205, 0.45); }
+.inv-ambient-sparkle .amb-p { background: radial-gradient(circle, #fff7d6 0%, rgba(255, 224, 150, 0.9) 45%, transparent 75%); border-radius: 50%; width: calc(var(--s) * 3); height: calc(var(--s) * 3); }
+.inv-ambient-sparkle .amb-strip { animation-name: amb-rise; }
+@keyframes amb-fall { from { transform: translateY(-10%); } to { transform: translateY(108%); } }
+@keyframes amb-rise { from { transform: translateY(104%); } to { transform: translateY(-8%); } }
+@keyframes amb-sway {
+  from { transform: translateX(calc(var(--drift) * -0.5)) rotate(var(--r)); }
+  to { transform: translateX(var(--drift)) rotate(calc(var(--r) + 140deg)); }
+}
+.inv-ambient-sparkle .amb-p { animation-name: amb-glint; animation-duration: 3.2s; }
+@keyframes amb-glint { from { opacity: 0.15; transform: translateX(calc(var(--drift) * -0.5)) scale(0.7); } to { opacity: 1; transform: translateX(var(--drift)) scale(1.1); } }
+.amb-star { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; background: #fff8e1; box-shadow: 0 0 1.2cqi rgba(255, 238, 190, 0.9); animation: amb-twinkle var(--d) ease-in-out var(--o) infinite; }
+@keyframes amb-twinkle { 0%, 100% { opacity: 0.15; transform: scale(0.6); } 50% { opacity: 1; transform: scale(1.25); } }
+.amb-meteor { position: absolute; width: 18cqi; height: 0.35cqi; border-radius: 9px; background: linear-gradient(90deg, rgba(255, 248, 225, 0), #fff8e1); opacity: 0; transform: rotate(-32deg); animation: amb-meteor 13s ease-in var(--o) infinite; }
+@keyframes amb-meteor {
+  0% { opacity: 0; transform: rotate(-32deg) translateX(0); }
+  2% { opacity: 1; }
+  9%, 100% { opacity: 0; transform: rotate(-32deg) translateX(-46cqi); }
+}
+
+/* ---- The moon and the star (Celestial in Ambient.tsx) ---- */
+.cel { position: relative; }
+.cel-rings { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; opacity: 0; }
+.cel-star { position: absolute; left: var(--star-x); top: 50%; width: 15cqi; height: 15cqi; margin: -7.5cqi 0 0 -7.5cqi; filter: drop-shadow(0 0 2.2cqi rgba(255, 220, 140, 0.8)); animation: cel-glow 4.5s ease-in-out infinite alternate; }
+.cel-small .cel-star { width: 8cqi; height: 8cqi; margin: -4cqi 0 0 -4cqi; }
+.cel-star svg, .cel-moon { display: block; width: 100%; height: 100%; }
+.cel-arm { position: absolute; left: var(--star-x); top: 50%; width: 0; height: 0; }
+.cel-reach { position: absolute; left: 0; top: 0; width: 0; height: 0; transform: translateX(var(--rest)); }
+.cel-moon-turn { position: absolute; left: -5cqi; top: -5cqi; width: 10cqi; height: 10cqi; filter: drop-shadow(0 0 2cqi rgba(255, 240, 200, 0.7)); animation: cel-glow 4.5s ease-in-out 1.2s infinite alternate; }
+.cel-small .cel-moon-turn { left: -3cqi; top: -3cqi; width: 6cqi; height: 6cqi; }
+@keyframes cel-glow { from { filter: drop-shadow(0 0 1.2cqi rgba(255, 225, 150, 0.45)); } to { filter: drop-shadow(0 0 3cqi rgba(255, 232, 170, 0.95)); } }
+
+/* The orbit: three turns that slow to a stop, while the moon draws in from far away. */
+.cel-orbit .cel-star { opacity: 0; animation: cel-star-in 1.2s ease var(--cel-delay) both, cel-glow 4.5s ease-in-out calc(var(--cel-delay) + 1.2s) infinite alternate; }
+.cel-orbit .cel-arm { animation: cel-spin 6.4s cubic-bezier(0.18, 0.62, 0.22, 1) calc(var(--cel-delay) + 0.8s) both; }
+.cel-orbit .cel-reach { animation: cel-close 6.4s cubic-bezier(0.45, 0.05, 0.25, 1) calc(var(--cel-delay) + 0.8s) both; }
+.cel-orbit .cel-moon-turn { animation: cel-unspin 6.4s cubic-bezier(0.18, 0.62, 0.22, 1) calc(var(--cel-delay) + 0.8s) both, cel-glow 4.5s ease-in-out calc(var(--cel-delay) + 7.2s) infinite alternate; }
+.cel-orbit .cel-rings { animation: cel-rings 6.4s ease calc(var(--cel-delay) + 0.8s) both; }
+.cel-orbit[data-motion="gentle"] .cel-arm, .cel-orbit[data-motion="gentle"] .cel-reach, .cel-orbit[data-motion="gentle"] .cel-moon-turn { animation-duration: 3.6s; }
+@keyframes cel-star-in { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: none; } }
+@keyframes cel-spin { from { transform: rotate(0deg); opacity: 0; } 8% { opacity: 1; } to { transform: rotate(1080deg); opacity: 1; } }
+@keyframes cel-unspin { from { transform: rotate(0deg); } to { transform: rotate(-1080deg); } }
+@keyframes cel-close { from { transform: translateX(var(--start)); } to { transform: translateX(var(--rest)); } }
+@keyframes cel-rings { 0%, 6% { opacity: 0; } 22% { opacity: 0.8; } 80% { opacity: 0.45; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .inv-ambient { display: none; }
+  .cel-orbit .cel-star, .cel-orbit .cel-arm, .cel-orbit .cel-reach, .cel-orbit .cel-moon-turn, .cel-orbit .cel-rings { animation: none !important; opacity: 1; }
+  .cel-orbit .cel-rings { opacity: 0; }
+}
+
 /* Film title card opening */
 @keyframes op-title {
   0% { opacity: 0; transform: translateY(6px); }

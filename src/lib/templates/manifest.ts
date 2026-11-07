@@ -40,6 +40,10 @@ const reveal = { animation: z.enum(animationKeys).default("settle"), delayMs: z.
 
 export const ornamentNames = ["foil-rule", "monogram", "laurel", "arch", "stars", "sprig", "deco-fan", "wave"] as const;
 
+/** Light that drifts across a scene and never stops: petals, golden dust, or twinkling stars with the odd shooting star. */
+export const ambientKeys = ["petals", "sparkle", "stars"] as const;
+export type AmbientKey = (typeof ambientKeys)[number];
+
 export const layerSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("text"),
@@ -58,6 +62,18 @@ export const layerSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("video"), slot: z.string() }),
   z.object({ type: z.literal("countdown"), slot: z.string() }),
   z.object({ type: z.literal("rsvp") }),
+  /**
+   * A moon and a star that stand for the two people. A moon circles the star,
+   * slowing and drawing closer until the pair come to rest side by side, then
+   * both glow softly for as long as the card is open. `orbit: false` shows
+   * them already at rest (the small version for the finished card).
+   */
+  z.object({
+    type: z.literal("celestial"),
+    orbit: z.boolean().default(true),
+    size: z.enum(["large", "small"]).default("large"),
+    delayMs: z.number().int().min(0).max(15000).default(0),
+  }),
 ]);
 export type Layer = z.infer<typeof layerSchema>;
 
@@ -77,6 +93,8 @@ export const sceneSchema = z.object({
   }),
   layers: z.array(layerSchema).min(1),
   transition: z.enum(transitionKeys).default("fade"),
+  /** Gentle looping movement over the background (not in Still). */
+  ambient: z.enum(ambientKeys).optional(),
   /** Where the lettering sits on the card. */
   align: z.enum(["center", "start", "end"]).default("center"),
   /** How long a prelude scene holds before the next; ignored for the final scene. */
