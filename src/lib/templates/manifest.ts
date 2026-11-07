@@ -184,6 +184,16 @@ export const contentSchema = z.object({
   /** The customer's choices in the studio (fall back to the design's). */
   motion: z.enum(motionLevels).optional(),
   opening: z.enum(openingKeys).optional(),
+  /** The "Our story" section of the wedding website: its words and photograph. */
+  story: z
+    .object({
+      heading: z.string().max(80).optional(),
+      body: z.string().max(1500).optional(),
+      /** Where the photograph lives in private storage: <event id>/<uuid>.webp */
+      photoPath: z.string().max(120).optional(),
+      photoAlt: z.string().max(160).optional(),
+    })
+    .optional(),
 });
 export type InvitationContent = z.infer<typeof contentSchema>;
 

@@ -8,6 +8,8 @@ import { getOccasion } from "@/lib/occasions/registry";
 import { kindConfig } from "@/lib/occasions/kinds";
 import { effectiveSlots } from "@/lib/occasions/compat";
 import { fieldGroups } from "@/lib/studio/content";
+import { signedPhotoUrl } from "@/lib/studio/photos";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { StudioEditor } from "./StudioEditor";
 
 export const metadata: Metadata = { title: "Studio", robots: { index: false } };
@@ -29,6 +31,8 @@ async function Studio({ params }: { params: PageProps<"/studio/[project]">["para
   const occasion = getOccasion(project.event.occasion);
   if (!template || !occasion) notFound();
 
+  const supabase = await createSupabaseServerClient();
+  const storyPhotoUrl = supabase ? await signedPhotoUrl(supabase, project.event.id, project.content.story?.photoPath) : undefined;
   const placeholders = Object.fromEntries(effectiveSlots(occasion, template).map((f) => [f.key, f.default ?? ""]));
   return (
     <>
@@ -47,6 +51,9 @@ async function Studio({ params }: { params: PageProps<"/studio/[project]">["para
         hideAge={!!project.event.settings.hideAge}
         placeholders={placeholders}
         media={template.sampleMedia}
+        eventId={project.event.id}
+        hasStory={project.sections.includes("story")}
+        storyPhotoUrl={storyPhotoUrl}
       />
     </>
   );

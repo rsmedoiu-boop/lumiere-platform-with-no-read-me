@@ -11,6 +11,8 @@ import { backdropFor } from "@/lib/cinema/assets";
 import { zonedToIso } from "@/lib/start/draft";
 import { resolveNames } from "@/lib/cinema/names";
 import type { SectionKey } from "@/lib/events/site";
+import { signedPhotoUrl } from "@/lib/studio/photos";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Guest preview", robots: { index: false, follow: false } };
 
@@ -32,21 +34,26 @@ async function Preview({ params }: { params: PageProps<"/studio/[project]/previe
   const slots = project.content.slots;
   const names = resolveNames(slots, { hideAge: !!project.event.settings.hideAge });
   const hosts = names?.mode === "couple" ? [names.first, names.second].filter(Boolean) : names?.mode === "organisation" ? [names.organisation] : names ? [names.name] : [project.event.title];
-  // Only what the studio can edit so far: the story, timings and FAQs arrive with the next stages, so the sample ones stay out.
-  const sections = project.sections.filter((s): s is SectionKey => s === "countdown" || s === "rsvp");
+  // Only what the studio can edit so far (countdown, RSVP and the story): timings and FAQs arrive with the next stages, so the sample ones stay out.
+  const story = project.content.story;
+  const storyBody = (story?.body ?? "").split(/\n\s*\n/).map((t) => t.trim()).filter(Boolean);
+  const supabase = await createSupabaseServerClient();
+  const storyPhoto = supabase ? await signedPhotoUrl(supabase, project.event.id, story?.photoPath) : undefined;
+  const hasStory = !!(story?.heading?.trim() || storyBody.length || storyPhoto);
+  const sections = project.sections.filter((s): s is SectionKey => s === "countdown" || s === "rsvp" || (s === "story" && hasStory));
   const event = {
     ...demoEvent,
     slug: project.event.slug,
     timezone: project.event.timezone,
     startsAt: slots.date ? zonedToIso(slots.date, slots.time || "12:00", project.event.timezone) : (project.event.startsAt ?? demoEvent.startsAt),
     hosts,
-    story: undefined,
+    story: hasStory ? { heading: story?.heading?.trim() || "Our story", body: storyBody } : undefined,
     schedule: [],
     dressCode: undefined,
     accommodation: [],
     extra: [],
     venue: { name: slots.venue ?? "", address: "", mapQuery: slots.venue ?? "" },
-    media: { ...backdropFor(template) },
+    media: { ...backdropFor(template), storyPhoto, storyPhotoAlt: story?.photoAlt },
     sections,
     invitation: { template, content: project.content, media: template.sampleMedia },
   };
