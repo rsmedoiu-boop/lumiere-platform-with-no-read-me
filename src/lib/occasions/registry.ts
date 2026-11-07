@@ -81,6 +81,8 @@ const invitationLine = (fallback: string): Slot => ({
   required: false,
   default: fallback,
 });
+/** The first words of the film; defaults by invitation type (see kinds.ts). */
+export const leadField: Slot = { key: "lead", type: "text", label: "Opening words", maxLength: 40, required: false, default: "You are invited" };
 const photo = (label = "Photograph"): Slot => ({ key: "photo", type: "image", label, required: false });
 
 const coupleFields = (inviteWording: string): Slot[] => [
@@ -90,6 +92,7 @@ const coupleFields = (inviteWording: string): Slot[] => [
   time(),
   venue(),
   invitationLine(inviteWording),
+  leadField,
   photo("Your photograph"),
 ];
 
@@ -166,6 +169,7 @@ export const occasions: OccasionConfig[] = [
       time("Party starts"),
       venue(),
       invitationLine("Join us to celebrate"),
+      leadField,
       photo(),
     ],
     sections: { available: ["countdown", "schedule", "venue", "dress_code", "accommodation", "gallery", "gifts", "rsvp", "extra"], defaults: ["countdown", "venue", "dress_code", "rsvp"] },
@@ -210,6 +214,7 @@ export const occasions: OccasionConfig[] = [
       time("Service time"),
       venue("Church or venue"),
       invitationLine("You are warmly invited to the christening of"),
+      leadField,
       photo(),
     ],
     sections: { available: ["countdown", "schedule", "venue", "gifts", "rsvp", "extra"], defaults: ["countdown", "schedule", "venue", "rsvp"] },
@@ -233,6 +238,7 @@ export const occasions: OccasionConfig[] = [
       time(),
       venue(),
       invitationLine("Please join us for a baby shower honouring"),
+      leadField,
       photo(),
     ],
     sections: { available: ["countdown", "schedule", "venue", "gifts", "rsvp", "extra"], defaults: ["countdown", "venue", "gifts", "rsvp"] },
@@ -257,6 +263,7 @@ export const occasions: OccasionConfig[] = [
       time(),
       venue(),
       invitationLine("requests the pleasure of your company at"),
+      leadField,
       { key: "logo", type: "image", label: "Logo", required: false },
     ],
     sections: { available: ["countdown", "schedule", "venue", "dress_code", "accommodation", "rsvp", "extra"], defaults: ["countdown", "schedule", "venue", "rsvp", "extra"] },
@@ -282,6 +289,7 @@ export const occasions: OccasionConfig[] = [
       time(),
       venue(),
       invitationLine("You are invited to"),
+      leadField,
       photo(),
     ],
     sections: { available: allSections, defaults: ["countdown", "venue", "rsvp"] },

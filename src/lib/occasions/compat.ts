@@ -12,6 +12,7 @@ export function slotsUsedBy(manifest: Manifest): Set<string> {
   const used = new Set<string>();
   for (const scene of manifest.scenes) {
     for (const layer of scene.layers) {
+      // A "names" layer adapts to any occasion, so it needs no particular field.
       if ("slot" in layer && layer.slot) used.add(layer.slot);
     }
   }
@@ -85,5 +86,6 @@ export function starterContent(o: OccasionConfig, kind: InvitationKind, t: Templ
   for (const s of effectiveSlots(o, t)) if (s.default !== undefined) slots[s.key] = s.default;
   const wording = o.wording[kind];
   if (wording) slots.invitationLine = wording;
+  slots.lead = kindConfig[kind].lead;
   return { slots };
 }

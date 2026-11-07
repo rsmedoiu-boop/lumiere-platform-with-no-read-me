@@ -66,11 +66,24 @@ describe("invitation types", () => {
 });
 
 describe("templates and occasions", () => {
-  it("a wedding design suits weddings but not birthdays (it needs two names)", () => {
+  it("a design whose names adapt suits a birthday; one that draws two named partners would not", () => {
     expect(templateSupports(midnight, wedding).ok).toBe(true);
-    const b = templateSupports(midnight, birthday);
+    expect(templateSupports(midnight, birthday).ok).toBe(true);
+    const twoNames = {
+      ...midnight,
+      occasions: ["birthdays"],
+      manifest: {
+        ...midnight.manifest,
+        scenes: [{ ...midnight.manifest.scenes[2], layers: [{ type: "text" as const, slot: "partnerOne", style: "names" as const, animation: "settle" as const, delayMs: 0 }] }],
+      },
+    };
+    const b = templateSupports(twoNames, birthday);
     expect(b.ok).toBe(false);
-    expect(b.missing).toEqual(expect.arrayContaining(["partnerOne", "partnerTwo"]));
+    expect(b.missing).toEqual(["partnerOne"]);
+  });
+
+  it("a design is only offered for the occasions it lists", () => {
+    expect(templateSupports(getTemplate("riviera")!, birthday).ok).toBe(false);
   });
 
   it("every design is usable for every occasion it lists", () => {
@@ -85,15 +98,17 @@ describe("templates and occasions", () => {
 
   it("filters the gallery by occasion", () => {
     expect(templatesFor("weddings", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera"]);
-    expect(templatesFor("birthdays", templateLibrary)).toEqual([]);
+    expect(templatesFor("birthdays", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow", "midnight-garden"]);
+    expect(templatesFor("corporate", templateLibrary).map((t) => t.slug)).toEqual(["ivory-vow"]);
     expect(templatesFor("nope", templateLibrary)).toEqual([]);
   });
 
   it("only offers occasions that are switched on and have a design", () => {
     const slugs = startableOccasions(templateLibrary, activeCategorySlugs).map((o) => o.slug);
     expect(slugs).toContain("weddings");
-    expect(slugs).not.toContain("birthdays"); // no birthday designs yet
-    expect(startableOccasions(templateLibrary, ["birthdays"])).toEqual([]);
+    expect(slugs).toContain("birthdays");
+    expect(startableOccasions(templateLibrary, ["weddings"]).map((o) => o.slug)).toEqual(["weddings"]);
+    expect(startableOccasions([getTemplate("riviera")!], activeCategorySlugs).map((o) => o.slug)).not.toContain("birthdays");
   });
 });
 
@@ -129,10 +144,21 @@ describe("every published invitation has a countdown and a reply", () => {
 });
 
 describe("starter content", () => {
-  it("uses the invitation type's wording and passes the design's validation", () => {
+  it("uses the invitation type's wording and opening words, and validates against the occasion's fields", () => {
     const c = starterContent(wedding, "save_the_date", midnight);
     expect(c.slots.invitationLine).toBe(wedding.wording.save_the_date);
-    expect(validateContent(midnight.manifest, c).ok).toBe(true);
+    expect(c.slots.lead).toBe("Save the date");
+    expect(validateContent(midnight.manifest, c, effectiveSlots(wedding, midnight)).ok).toBe(true);
+  });
+
+  it("a birthday on Midnight Garden validates against birthday fields, not wedding ones", () => {
+    const fields = effectiveSlots(birthday, midnight);
+    const c = starterContent(birthday, "invitation", midnight);
+    expect(c.slots.celebrant).toBeTruthy();
+    expect(c.slots.partnerOne).toBeUndefined();
+    expect(validateContent(midnight.manifest, c, fields).ok).toBe(true);
+    const r = validateContent(midnight.manifest, { slots: { ...c.slots, celebrant: "" } }, fields);
+    expect(r.ok).toBe(false);
   });
 
   it("collects the occasion's fields, keeping the design's sample names", () => {

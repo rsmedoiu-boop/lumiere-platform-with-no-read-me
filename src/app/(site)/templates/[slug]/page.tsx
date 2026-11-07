@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { InvitationRenderer } from "@/components/invitation/InvitationRenderer";
 import { templateLibrary, getTemplate } from "@/lib/templates/library";
 import { sectionLabels } from "@/lib/events/site";
+import { motionLevelInfo, motionLevels, openingInfo } from "@/lib/cinema/motion";
 
 const sectionNames: Record<string, string> = { ...sectionLabels, rsvp: "RSVP with live guest list", extra: "Good to know" };
 
@@ -49,13 +50,31 @@ export default async function TemplatePage({ params }: PageProps<"/templates/[sl
           <Link href="/register" className="btn btn-primary">
             Personalise this design
           </Link>
-          {t.slug === "midnight-garden" && (
-            <Link href="/e/demo" className="btn btn-quiet">
-              Open it as a guest
-            </Link>
-          )}
+          <Link href={`/preview/${t.slug}/${t.manifest.motion.opening}`} className="btn btn-quiet">
+            Open it as a guest
+          </Link>
         </div>
         <p className="mt-3 text-sm text-ink-soft">Free to try. You only pay when you publish.</p>
+        <h2 className="mt-12 text-2xl">Choose how it opens</h2>
+        <ul className="mt-4 grid gap-3 sm:grid-cols-3">
+          {(["envelope", "curtain", "title-card"] as const).map((o) => (
+            <li key={o}>
+              <Link href={`/preview/${t.slug}/${o}`} className="block h-full border border-line p-4 hover:border-ink">
+                <p className="font-display text-xl">{openingInfo[o].name}</p>
+                <p className="mt-1 text-sm text-ink-soft">{openingInfo[o].help}</p>
+                <p className="mt-3 text-sm underline underline-offset-4">Watch</p>
+              </Link>
+            </li>
+          ))}
+        </ul>
+        <h2 className="mt-10 text-2xl">Three ways to move</h2>
+        <ul className="mt-3 grid gap-1 text-ink-soft">
+          {motionLevels.map((m) => (
+            <li key={m}>
+              <span className="text-ink">{motionLevelInfo[m].name}</span>: {motionLevelInfo[m].help}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );

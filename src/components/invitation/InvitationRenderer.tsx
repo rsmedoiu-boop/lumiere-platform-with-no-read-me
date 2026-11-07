@@ -1,137 +1,143 @@
 /**
- * The one renderer every template uses. Given a manifest and a customer's
- * content it draws the invitation — in the gallery, the editor preview, the
- * published event page and (later) export thumbnails.
+ * The one renderer every template uses — gallery thumbnails, the editor
+ * preview, the published invitation and (later) exports.
+ *
+ * Scenes are sequenced with CSS only (delays computed by buildTimeline), so
+ * the invitation renders on the server, plays without JavaScript and stops
+ * cleanly for visitors who prefer reduced motion. The only client code is the
+ * small parallax wrapper and the live countdown.
  */
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import {
   defaultContent,
   formatEventDate,
+  resolveMotion,
   resolveTheme,
   type InvitationContent,
   type Layer,
+  type Scene,
   type TemplateDefinition,
 } from "@/lib/templates/manifest";
+import { buildTimeline, revealFor, TRANSITION_MS, type MotionLevel, type RevealKey } from "@/lib/cinema/motion";
+import { getAsset } from "@/lib/cinema/assets";
+import { monogramOf, resolveNames, type NamesShape } from "@/lib/cinema/names";
 import { Countdown } from "./Countdown";
+import { Ornament } from "./Ornament";
+import { ParallaxRoot } from "./ParallaxRoot";
 
 const fontVar = { cormorant: "var(--font-display)", jost: "var(--font-sans)" } as const;
+const LETTER_STEP_MS = 55;
 
 interface Props {
   template: TemplateDefinition;
   content?: InvitationContent;
-  /** "card" = full invitation; "thumb" = gallery preview (no countdown/RSVP). */
+  /** "card" = full invitation; "thumb" = gallery preview (still, no countdown/RSVP). */
   variant?: "card" | "thumb";
+  /** false = show the finished card without movement. */
   animate?: boolean;
+  /** Override the motion level (the editor's preview switch). */
+  motion?: MotionLevel;
   locale?: string;
   className?: string;
   /** Resolved image URLs for image slots (customer uploads, or template samples). */
   media?: Record<string, string>;
+  /** Occasion settings that change what's shown (e.g. a birthday with the age hidden). */
+  hideAge?: boolean;
 }
 
-export function InvitationRenderer({ template, content, variant = "card", animate = true, locale = "en-GB", className = "", media }: Props) {
+const textStyles: Record<string, CSSProperties> = {
+  names: { fontFamily: "var(--inv-display)", fontSize: "13cqi", lineHeight: 0.95, fontWeight: 400 },
+  script: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "8cqi", color: "var(--inv-accent)", lineHeight: 1 },
+  heading: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "9cqi", lineHeight: 1.1, color: "var(--inv-accent)" },
+  body: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "4.4cqi", maxWidth: "70cqi", lineHeight: 1.35 },
+  date: { fontSize: "3.6cqi", letterSpacing: "0.08em", fontWeight: 450 },
+  small: { fontSize: "3.1cqi", letterSpacing: "0.06em", color: "var(--inv-muted)", maxWidth: "72cqi", lineHeight: 1.45 },
+};
+
+export function InvitationRenderer({
+  template,
+  content,
+  variant = "card",
+  animate = true,
+  motion,
+  locale = "en-GB",
+  className = "",
+  media,
+  hideAge = false,
+}: Props) {
   const images = media ?? (content ? {} : (template.sampleMedia ?? {}));
   const c = content ?? defaultContent(template.manifest);
   const theme = resolveTheme(template.manifest, c);
-  const scene = template.manifest.scenes[0];
   const thumb = variant === "thumb";
+  const level: MotionLevel = thumb || !animate ? "still" : (motion ?? resolveMotion(template.manifest, c).level);
+  const scenes = template.manifest.scenes;
+  const timeline = buildTimeline(scenes, level);
+  const names = resolveNames(c.slots, { hideAge });
   const value = (slot?: string) => (slot ? (c.slots[slot] ?? "") : "");
 
-  const style = {
+  // A background shared by consecutive scenes (e.g. one garden loop under
+  // the whole film) is drawn once beneath them; scenes add only their veil.
+  const finalBg = scenes[scenes.length - 1].background;
+  const sharedBg = isMedia(finalBg) ? finalBg : null;
+  const sameAsShared = (b: Scene["background"]) => !!sharedBg && b.kind === sharedBg.kind && b.value === sharedBg.value;
+
+  const rootStyle = {
     "--inv-bg": theme.palette.background,
     "--inv-ink": theme.palette.ink,
     "--inv-accent": theme.palette.accent,
     "--inv-muted": theme.palette.muted,
     "--inv-display": fontVar[theme.fonts.display],
     "--inv-body": fontVar[theme.fonts.body],
-    background: scene.background.kind === "gradient" || scene.background.kind === "color" ? scene.background.value : theme.palette.background,
+    background: theme.palette.background,
     color: "var(--inv-ink)",
     fontFamily: "var(--inv-body)",
     aspectRatio: "5 / 7",
   } as CSSProperties;
 
-  const anim = (layer: { animation?: string; delayMs?: number }) => {
-    if (!animate || !layer.animation || layer.animation === "none") return {};
-    return {
-      className: `reveal-${layer.animation === "ink-in" ? "ink" : layer.animation === "foil-draw" ? "foil" : "settle"}`,
-      style: { animationDelay: `${layer.delayMs ?? 0}ms` } as CSSProperties,
-    };
+  const renderLayer = (layer: Layer, delay: number, key: number): ReactNode => {
+    const reveal = "animation" in layer ? revealFor(layer.animation as RevealKey, level) : "none";
+    const depth = "depth" in layer && level === "cinematic" ? layer.depth : undefined;
+    const node = renderLayerBody(layer, reveal, delay);
+    if (!node) return null;
+    return depth ? (
+      <div key={key} className="inv-plx" style={{ "--depth": depth } as CSSProperties}>
+        {node}
+      </div>
+    ) : (
+      <div key={key} className="contents">
+        {node}
+      </div>
+    );
   };
 
-  const initials = [value("partnerOne"), value("partnerTwo")].map((n) => n.trim().charAt(0).toUpperCase()).join("");
-
-  const renderLayer = (layer: Layer, i: number) => {
+  const renderLayerBody = (layer: Layer, reveal: RevealKey, delay: number): ReactNode => {
     switch (layer.type) {
       case "text": {
         const text = layer.slot ? (layer.style === "date" ? formatEventDate(value(layer.slot), locale) : value(layer.slot)) : (layer.text ?? "");
         if (!text) return null;
-        const a = anim(layer);
-        const styles: Record<string, CSSProperties> = {
-          names: { fontFamily: "var(--inv-display)", fontSize: "13cqi", lineHeight: 0.95, fontWeight: 400 },
-          script: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "8cqi", color: "var(--inv-accent)", lineHeight: 1 },
-          heading: { fontFamily: "var(--inv-display)", fontSize: "7cqi" },
-          body: { fontFamily: "var(--inv-display)", fontStyle: "italic", fontSize: "4.4cqi", maxWidth: "70cqi", lineHeight: 1.35, color: "var(--inv-ink)" },
-          date: { fontSize: "3.6cqi", letterSpacing: "0.08em", fontWeight: 450 },
-          small: { fontSize: "3.1cqi", letterSpacing: "0.06em", color: "var(--inv-muted)" },
-        };
+        return <Reveal as="p" text={text} reveal={reveal} delay={delay} style={textStyles[layer.style]} />;
+      }
+      case "names":
+        return <Names names={names} layout={layer.layout} reveal={reveal} delay={delay} />;
+      case "ornament":
         return (
-          <p key={i} className={a.className} style={{ ...styles[layer.style], ...a.style }}>
-            {text}
-          </p>
+          <div className={revealClass(reveal)} style={revealStyle(reveal, delay)}>
+            <Ornament name={layer.name} monogram={monogramOf(names)} />
+          </div>
         );
-      }
-      case "ornament": {
-        const a = anim(layer);
-        if (layer.name === "foil-rule")
-          return <div key={i} aria-hidden className={a.className} style={{ ...a.style, width: "34cqi", height: 1, background: "linear-gradient(90deg, transparent, var(--inv-accent), transparent)", margin: "1.5cqi 0" }} />;
-        if (layer.name === "monogram")
-          return (
-            <svg key={i} aria-hidden viewBox="0 0 60 60" className={a.className} style={{ ...a.style, width: "13cqi", color: "var(--inv-accent)" }}>
-              <circle cx="30" cy="30" r="27" fill="none" stroke="currentColor" strokeWidth="0.8" />
-              <circle cx="30" cy="30" r="23.5" fill="none" stroke="currentColor" strokeWidth="0.4" />
-              <text x="30" y="36" textAnchor="middle" fontFamily="var(--inv-display)" fontSize="17" fill="currentColor">
-                {initials || "&"}
-              </text>
-            </svg>
-          );
-        if (layer.name === "laurel")
-          return (
-            <svg key={i} aria-hidden viewBox="0 0 120 40" className={a.className} style={{ ...a.style, width: "26cqi", color: "var(--inv-accent)" }}>
-              {[-1, 1].map((side) => (
-                <g key={side} transform={side === 1 ? "translate(120 0) scale(-1 1)" : undefined} fill="none" stroke="currentColor" strokeWidth="0.9">
-                  <path d="M58 34 C40 32 22 24 12 8" />
-                  {[0, 1, 2, 3, 4].map((k) => (
-                    <ellipse key={k} cx={46 - k * 8} cy={30 - k * 4.6} rx="5" ry="2" transform={`rotate(${-20 - k * 8} ${46 - k * 8} ${30 - k * 4.6})`} />
-                  ))}
-                </g>
-              ))}
-            </svg>
-          );
-        return null;
-      }
       case "image": {
         const radius = layer.shape === "arch" ? "999px 999px 4px 4px" : layer.shape === "circle" ? "999px" : "4px";
+        const src = images[layer.slot];
         return (
           <div
-            key={i}
             role="img"
-            aria-label={images[layer.slot] ? "Photograph of the couple" : "Space for the couple's photograph"}
-            style={{
-              width: "40cqi",
-              aspectRatio: "3 / 4",
-              borderRadius: radius,
-              border: "1px solid var(--inv-accent)",
-              padding: "1.4cqi",
-              marginBottom: "2cqi",
-            }}
+            aria-label={src ? "Photograph" : "Space for a photograph"}
+            className={revealClass(reveal)}
+            style={{ ...revealStyle(reveal, delay), width: "40cqi", aspectRatio: "3 / 4", borderRadius: radius, border: "1px solid var(--inv-accent)", padding: "1.4cqi", marginBottom: "2cqi" }}
           >
-            {images[layer.slot] ? (
+            {src ? (
               // eslint-disable-next-line @next/next/no-img-element -- template art also renders in exports and emails
-              <img
-                src={images[layer.slot]}
-                alt=""
-                loading="lazy"
-                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: radius, display: "block" }}
-              />
+              <img src={src} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: radius, display: "block" }} />
             ) : (
               <div
                 style={{
@@ -146,27 +152,17 @@ export function InvitationRenderer({ template, content, variant = "card", animat
                   color: "var(--inv-bg)",
                 }}
               >
-                {initials}
+                {monogramOf(names)}
               </div>
             )}
           </div>
         );
       }
       case "countdown":
-        return thumb ? null : <Countdown key={i} isoDate={value(layer.slot)} />;
+        return thumb ? null : <Countdown isoDate={value(layer.slot)} />;
       case "rsvp":
         return thumb ? null : (
-          <span
-            key={i}
-            style={{
-              marginTop: "3cqi",
-              border: "1px solid var(--inv-accent)",
-              borderRadius: 999,
-              padding: "1.6cqi 5cqi",
-              fontSize: "3cqi",
-              letterSpacing: "0.1em",
-            }}
-          >
+          <span style={{ marginTop: "3cqi", border: "1px solid var(--inv-accent)", borderRadius: 999, padding: "1.6cqi 5cqi", fontSize: "3cqi", letterSpacing: "0.1em" }}>
             RSVP
           </span>
         );
@@ -175,18 +171,147 @@ export function InvitationRenderer({ template, content, variant = "card", animat
     }
   };
 
+  const card = (
+    <div className="inv-card relative overflow-hidden text-center" style={rootStyle} data-motion={level}>
+      {sharedBg && <SceneBackground background={sharedBg} level={level} shared />}
+      {timeline.scenes.map((t) => {
+        const scene = scenes[t.index];
+        const isFinal = t.endMs === null;
+        const animation =
+          level === "still"
+            ? undefined
+            : [
+                `inv-scene-${t.transition} ${TRANSITION_MS}ms cubic-bezier(0.4, 0, 0.2, 1) ${t.startMs}ms both`,
+                t.endMs !== null ? `inv-scene-out ${TRANSITION_MS}ms ease ${t.endMs}ms forwards` : null,
+              ]
+                .filter(Boolean)
+                .join(", ");
+        return (
+          <section
+            key={scene.id}
+            aria-hidden={!isFinal}
+            className={`inv-scene absolute inset-0 flex items-center justify-center ${isFinal ? "" : "inv-prelude"} ${isMedia(scene.background) ? "inv-on-photo" : ""}`}
+            style={{ animation, zIndex: t.index + 1, padding: "9cqi 8cqi" }}
+          >
+            {sameAsShared(scene.background) ? (
+              <Veil amount={scene.background.overlay} />
+            ) : (
+              <SceneBackground background={scene.background} level={level} />
+            )}
+            {isFinal && (
+              <div aria-hidden className="pointer-events-none absolute" style={{ inset: "3.5cqi", border: "1px solid color-mix(in oklab, var(--inv-accent) 55%, transparent)" }} />
+            )}
+            {/* Content sits above the background and veil, animated or not. */}
+            <div className="relative z-[1] flex w-full flex-col items-center gap-[1.6cqi]">{scene.layers.map((l, i) => renderLayer(l, t.layerDelays[i], i))}</div>
+          </section>
+        );
+      })}
+    </div>
+  );
+
   // The outer box is the size container, so every cqi unit inside scales
   // with the card: the same invitation works as a thumbnail or full screen.
   return (
     <div className={className} style={{ containerType: "inline-size" }}>
-      <div
-        className="relative flex flex-col items-center justify-center gap-[1.6cqi] overflow-hidden text-center"
-        style={{ ...style, padding: "9cqi 8cqi" }}
-      >
-        {/* Inner foil border — a stationery detail, not a card shadow */}
-        <div aria-hidden className="pointer-events-none absolute" style={{ inset: "3.5cqi", border: "1px solid color-mix(in oklab, var(--inv-accent) 55%, transparent)" }} />
-        {scene.layers.map(renderLayer)}
+      {level === "cinematic" ? <ParallaxRoot>{card}</ParallaxRoot> : card}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function isMedia(b: Scene["background"]) {
+  return b.kind === "asset" || b.kind === "image" || b.kind === "video";
+}
+
+function revealClass(r: RevealKey) {
+  return r === "none" ? undefined : `reveal-${r}`;
+}
+function revealStyle(r: RevealKey, delay: number): CSSProperties | undefined {
+  return r === "none" ? undefined : { animationDelay: `${delay}ms` };
+}
+
+/** Text with a reveal; "letters" writes it in one character at a time. */
+function Reveal({ as: Tag, text, reveal, delay, style }: { as: "p" | "span"; text: string; reveal: RevealKey; delay: number; style?: CSSProperties }) {
+  if (reveal !== "letters") {
+    return (
+      <Tag className={revealClass(reveal)} style={{ ...style, ...revealStyle(reveal, delay) }}>
+        {text}
+      </Tag>
+    );
+  }
+  // Screen readers get the whole phrase once; the letters are decoration.
+  return (
+    <Tag aria-label={text} style={style}>
+      {Array.from(text).map((ch, i) => (
+        <span key={i} aria-hidden className="reveal-letter" style={{ animationDelay: `${delay + i * LETTER_STEP_MS}ms` }}>
+          {ch === " " ? " " : ch}
+        </span>
+      ))}
+    </Tag>
+  );
+}
+
+function Names({ names, layout, reveal, delay }: { names: NamesShape | null; layout: "stacked" | "inline"; reveal: RevealKey; delay: number }) {
+  if (!names) return null;
+  const big = textStyles.names;
+  const amp = textStyles.script;
+  const letters = reveal === "letters";
+  if (names.mode === "couple") {
+    if (layout === "inline") {
+      return <Reveal as="p" text={[names.first, names.second].filter(Boolean).join(" & ")} reveal={reveal} delay={delay} style={{ ...big, fontSize: "10cqi" }} />;
+    }
+    const ampDelay = letters ? delay + names.first.length * LETTER_STEP_MS : delay + 700;
+    const secondDelay = letters ? ampDelay + 300 : delay + 900;
+    return (
+      <div className="flex flex-col items-center gap-[1.2cqi]">
+        <Reveal as="p" text={names.first} reveal={reveal} delay={delay} style={big} />
+        <Reveal as="p" text="&" reveal={letters ? "blur" : reveal} delay={ampDelay} style={amp} />
+        <Reveal as="p" text={names.second} reveal={reveal} delay={secondDelay} style={big} />
       </div>
+    );
+  }
+  if (names.mode === "organisation") {
+    return (
+      <div className="flex flex-col items-center gap-[1.6cqi]">
+        <Reveal as="p" text={names.organisation} reveal={reveal} delay={delay} style={{ ...textStyles.small, letterSpacing: "0.22em", textTransform: "uppercase" }} />
+        <Reveal as="p" text={names.title} reveal={reveal} delay={delay + 500} style={{ ...big, fontSize: "11cqi" }} />
+      </div>
+    );
+  }
+  return (
+    <div className="flex flex-col items-center gap-[1.6cqi]">
+      <Reveal as="p" text={names.name} reveal={reveal} delay={delay} style={big} />
+      {names.caption && <Reveal as="p" text={names.caption} reveal={letters ? "blur" : reveal} delay={delay + 900} style={amp} />}
+    </div>
+  );
+}
+
+function Veil({ amount }: { amount: number }) {
+  if (!amount) return null;
+  return <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "var(--inv-bg)", opacity: amount }} />;
+}
+
+/** Colour, gradient, image or a shared cinematic asset (with its loop). */
+function SceneBackground({ background: b, level, shared = false }: { background: Scene["background"]; level: MotionLevel; shared?: boolean }) {
+  if (b.kind === "color" || b.kind === "gradient") {
+    return <div aria-hidden className="absolute inset-0" style={{ background: b.value }} />;
+  }
+  const asset = b.kind === "asset" ? getAsset(b.value) : undefined;
+  const still = asset?.poster ?? b.poster ?? (b.kind === "image" ? b.value : undefined);
+  const video = level !== "still" ? (asset?.kind === "video" ? asset.src : b.kind === "video" ? b.value : undefined) : undefined;
+  const drift = b.parallax && level === "cinematic";
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className={drift ? "inv-plx-bg absolute -inset-[6%]" : "absolute inset-0"}>
+        {still && (
+          // eslint-disable-next-line @next/next/no-img-element -- decorative backdrop, also used in exports
+          <img src={still} alt="" className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        {video && <video className="inv-video absolute inset-0 h-full w-full object-cover" src={video} poster={still} autoPlay muted loop playsInline preload="metadata" />}
+      </div>
+      {/* A shared background carries no veil of its own: each scene adds its own. */}
+      {!shared && <Veil amount={b.overlay} />}
     </div>
   );
 }

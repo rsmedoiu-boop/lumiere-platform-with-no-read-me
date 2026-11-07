@@ -18,7 +18,8 @@ export interface EventSiteData {
   /** ISO 8601 with offset, e.g. 2027-06-12T14:00:00+01:00 */
   startsAt: string;
   hosts: string[];
-  invitation: { template: TemplateDefinition; content: InvitationContent };
+  /** The invitation, with resolved URLs for its photo slots. */
+  invitation: { template: TemplateDefinition; content: InvitationContent; media?: Record<string, string> };
   story?: { heading: string; body: string[] };
   schedule: ScheduleItem[];
   venue: { name: string; address: string; mapQuery: string; parking?: string; transport?: string };

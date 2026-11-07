@@ -6,7 +6,8 @@
 import type { CSSProperties } from "react";
 import Link from "next/link";
 import { InvitationRenderer } from "@/components/invitation/InvitationRenderer";
-import { resolveTheme } from "@/lib/templates/manifest";
+import { resolveMotion, resolveTheme } from "@/lib/templates/manifest";
+import { namesLabel, resolveNames } from "@/lib/cinema/names";
 import {
   formatLongDate,
   mapLink,
@@ -16,7 +17,7 @@ import {
 } from "@/lib/events/site";
 import type { InvitedMember } from "@/lib/rsvp/schema";
 import { brand } from "@/lib/brand";
-import { Backdrop, EnvelopeOpening } from "./EnvelopeOpening";
+import { Backdrop, OpeningSequence } from "./OpeningSequence";
 import { LiveCountdown } from "./LiveCountdown";
 import { RsvpForm } from "./RsvpForm";
 
@@ -39,6 +40,7 @@ export function EventSite({
 }) {
   const { template, content } = event.invitation;
   const theme = resolveTheme(template.manifest, content);
+  const motion = resolveMotion(template.manifest, content);
   const on = (k: SectionKey) => event.sections.includes(k);
   const hostsLabel = event.hosts.join(" and ");
   const longDate = formatLongDate(event.startsAt, event.locale, event.timezone);
@@ -61,15 +63,21 @@ export function EventSite({
   } as CSSProperties;
 
   return (
-    <EnvelopeOpening
+    <OpeningSequence
+      opening={motion.opening}
+      palette={theme.palette}
       backdrop={event.media?.backdrop}
       backdropVideo={event.media?.backdropVideo}
       addressee={household.name}
       monogram={monogram}
+      title={namesLabel(resolveNames(content.slots)) || hostsLabel}
+      replayable={motion.level !== "still"}
+      continueLabel="View the wedding details"
       card={
         <InvitationRenderer
           template={template}
           content={content}
+          media={event.invitation.media}
           locale={event.locale}
         />
       }
@@ -129,11 +137,14 @@ export function EventSite({
               "radial-gradient(90% 70% at 50% 0%, color-mix(in oklab, var(--ev-bg) 70%, white 8%) 0%, var(--ev-bg) 70%)",
           }}
         >
-          <Backdrop
-            image={event.media?.backdrop}
-            video={event.media?.backdropVideo}
-            fade={0.62}
-          />
+          <div className="ev-hero-plx absolute inset-0">
+            <Backdrop
+              image={event.media?.backdrop}
+              video={event.media?.backdropVideo}
+              tint={theme.palette.background}
+              fade={0.62}
+            />
+          </div>
           <div className="relative">
             <Laurel />
             <p className="mt-6 text-sm tracking-[0.14em] text-[color:var(--ev-muted)]">
@@ -340,7 +351,7 @@ export function EventSite({
           </p>
         </footer>
       </div>
-    </EnvelopeOpening>
+    </OpeningSequence>
   );
 }
 

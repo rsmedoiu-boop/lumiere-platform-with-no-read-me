@@ -19,6 +19,7 @@ export const demoEvent: EventSiteData = {
         time: "14:00",
         venue: "Ashcombe House, Oxfordshire",
         invitationLine: "request the pleasure of your company to celebrate their marriage",
+        lead: "You are invited",
       },
     },
   },

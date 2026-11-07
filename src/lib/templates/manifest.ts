@@ -7,6 +7,7 @@
  * a new application. Pure TypeScript + Zod: reusable by a mobile app.
  */
 import { z } from "zod";
+import { motionLevels, openingKeys, revealKeys, transitionKeys } from "@/lib/cinema/motion";
 
 export const SCHEMA_VERSION = 1;
 
@@ -15,7 +16,8 @@ const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/, "Use a 6-digit hex colour");
 export const fontKeys = ["cormorant", "jost"] as const;
 export type FontKey = (typeof fontKeys)[number];
 
-export const animationKeys = ["none", "ink-in", "settle", "foil-draw"] as const;
+/** Text and ornament reveals (see src/lib/cinema/motion for what each level does with them). */
+export const animationKeys = revealKeys;
 
 export const slotSchema = z.object({
   key: z.string().regex(/^[a-z][a-zA-Z0-9_]{1,40}$/),
@@ -29,22 +31,30 @@ export type Slot = z.infer<typeof slotSchema>;
 
 const textStyle = z.enum(["names", "heading", "body", "small", "date", "script"]);
 
+/**
+ * Depth for parallax: 0 sits on the paper, 1 floats nearest the viewer.
+ * Only Cinematic motion moves layers by depth.
+ */
+const depth = z.number().min(0).max(1).optional();
+const reveal = { animation: z.enum(animationKeys).default("settle"), delayMs: z.number().int().min(0).max(15000).default(0), depth };
+
+export const ornamentNames = ["foil-rule", "monogram", "laurel", "arch", "stars", "sprig", "deco-fan", "wave"] as const;
+
 export const layerSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("text"),
     slot: z.string().optional(), // text comes from a customer slot…
     text: z.string().optional(), // …or is fixed wording in the design
     style: textStyle,
-    animation: z.enum(animationKeys).default("settle"),
-    delayMs: z.number().int().min(0).max(10000).default(0),
+    ...reveal,
   }),
-  z.object({
-    type: z.literal("ornament"),
-    name: z.enum(["foil-rule", "monogram", "laurel", "arch"]),
-    animation: z.enum(animationKeys).default("foil-draw"),
-    delayMs: z.number().int().min(0).max(10000).default(0),
-  }),
-  z.object({ type: z.literal("image"), slot: z.string(), shape: z.enum(["arch", "circle", "full"]).default("arch") }),
+  /**
+   * Whoever the invitation is from or for — a couple, one person or an
+   * organisation — laid out by the design. Lets one design serve any occasion.
+   */
+  z.object({ type: z.literal("names"), layout: z.enum(["stacked", "inline"]).default("stacked"), ...reveal, animation: z.enum(animationKeys).default("ink-in") }),
+  z.object({ type: z.literal("ornament"), name: z.enum(ornamentNames), ...reveal, animation: z.enum(animationKeys).default("foil-draw") }),
+  z.object({ type: z.literal("image"), slot: z.string(), shape: z.enum(["arch", "circle", "full"]).default("arch"), ...reveal }),
   z.object({ type: z.literal("video"), slot: z.string() }),
   z.object({ type: z.literal("countdown"), slot: z.string() }),
   z.object({ type: z.literal("rsvp") }),
@@ -54,13 +64,21 @@ export type Layer = z.infer<typeof layerSchema>;
 export const sceneSchema = z.object({
   id: z.string(),
   background: z.object({
-    kind: z.enum(["color", "gradient", "image", "video"]),
-    value: z.string(), // colour, CSS gradient, or storage path of a reusable asset
+    /** "asset" = a shared cinematic asset by id (src/lib/cinema/assets). */
+    kind: z.enum(["color", "gradient", "image", "video", "asset"]),
+    value: z.string(), // colour, CSS gradient, image URL or asset id
     poster: z.string().optional(),
+    /** Veil of the template's background colour over a picture, for legible lettering. */
+    overlay: z.number().min(0).max(1).default(0),
+    /** Slow drift and pointer depth on the background (Cinematic only). */
+    parallax: z.boolean().default(false),
   }),
   layers: z.array(layerSchema).min(1),
-  transition: z.enum(["fade", "rise", "none"]).default("fade"),
+  transition: z.enum(transitionKeys).default("fade"),
+  /** How long a prelude scene holds before the next; ignored for the final scene. */
+  durationMs: z.number().int().min(1200).max(12000).optional(),
 });
+export type Scene = z.infer<typeof sceneSchema>;
 
 /**
  * Event-website sections — one vocabulary for every template, occasion and
@@ -82,18 +100,47 @@ export const sectionKeys = [
 ] as const;
 export type SectionKey = (typeof sectionKeys)[number];
 
-export const manifestSchema = z.object({
-  schemaVersion: z.literal(SCHEMA_VERSION),
-  theme: z.object({
-    palette: z.object({ background: hex, ink: hex, accent: hex, muted: hex }),
-    fonts: z.object({ display: z.enum(fontKeys), body: z.enum(fontKeys) }),
-    editable: z.object({ palette: z.boolean(), fonts: z.boolean() }),
-  }),
-  slots: z.array(slotSchema).min(1),
-  scenes: z.array(sceneSchema).min(1),
-  sections: z.array(z.enum(sectionKeys)),
-});
+const nameSlotKeys = ["partnerOne", "partnerTwo", "celebrant", "childName", "honouree", "organisation", "eventName"];
+
+export const manifestSchema = z
+  .object({
+    schemaVersion: z.literal(SCHEMA_VERSION),
+    theme: z.object({
+      palette: z.object({ background: hex, ink: hex, accent: hex, muted: hex }),
+      fonts: z.object({ display: z.enum(fontKeys), body: z.enum(fontKeys) }),
+      editable: z.object({ palette: z.boolean(), fonts: z.boolean() }),
+    }),
+    slots: z.array(slotSchema).min(1),
+    /**
+     * Scenes play in order. Every scene before the last is a short prelude;
+     * the last is the finished invitation, which stays on screen and is what
+     * thumbnails, Still motion and exports show.
+     */
+    scenes: z.array(sceneSchema).min(1).max(5),
+    sections: z.array(z.enum(sectionKeys)),
+    motion: z
+      .object({
+        opening: z.enum(openingKeys).default("envelope"),
+        level: z.enum(motionLevels).default("cinematic"),
+      })
+      .default({ opening: "envelope", level: "cinematic" }),
+  })
+  .superRefine((m, ctx) => {
+    const final = m.scenes[m.scenes.length - 1];
+    const hasNames = final.layers.some((l) => l.type === "names" || (l.type === "text" && l.slot && nameSlotKeys.includes(l.slot)));
+    const hasDate = final.layers.some((l) => l.type === "text" && l.slot === "date");
+    if (!hasNames) ctx.addIssue({ code: "custom", path: ["scenes"], message: "The final scene must show the names" });
+    if (!hasDate) ctx.addIssue({ code: "custom", path: ["scenes"], message: "The final scene must show the date" });
+    m.scenes.slice(0, -1).forEach((sc, i) => {
+      if (sc.layers.some((l) => l.type === "rsvp" || l.type === "countdown"))
+        ctx.addIssue({ code: "custom", path: ["scenes", i], message: "Countdown and RSVP belong on the final scene" });
+    });
+    const ids = new Set(m.scenes.map((sc) => sc.id));
+    if (ids.size !== m.scenes.length) ctx.addIssue({ code: "custom", path: ["scenes"], message: "Scene ids must be unique" });
+  });
 export type Manifest = z.infer<typeof manifestSchema>;
+/** What a designer writes: defaults may be left out. */
+export type ManifestInput = z.input<typeof manifestSchema>;
 
 export interface TemplateDefinition {
   slug: string;
@@ -118,6 +165,9 @@ export const contentSchema = z.object({
   slots: z.record(z.string(), z.string()),
   palette: z.object({ background: hex, ink: hex, accent: hex, muted: hex }).partial().optional(),
   fonts: z.object({ display: z.enum(fontKeys), body: z.enum(fontKeys) }).partial().optional(),
+  /** The customer's choices in the studio (fall back to the design's). */
+  motion: z.enum(motionLevels).optional(),
+  opening: z.enum(openingKeys).optional(),
 });
 export type InvitationContent = z.infer<typeof contentSchema>;
 
@@ -127,19 +177,24 @@ export type ContentProblem = { slot?: string; message: string };
  * Check customer content against a template: unknown slots, lengths, required
  * fields, date formats, and overrides the template doesn't allow.
  */
-export function validateContent(manifest: Manifest, raw: unknown): { ok: true; content: InvitationContent } | { ok: false; problems: ContentProblem[] } {
+export function validateContent(
+  manifest: Manifest,
+  raw: unknown,
+  /** The fields being edited — the occasion's (see effectiveSlots); defaults to the design's own. */
+  fields: Slot[] = manifest.slots,
+): { ok: true; content: InvitationContent } | { ok: false; problems: ContentProblem[] } {
   const parsed = contentSchema.safeParse(raw);
   if (!parsed.success) {
     return { ok: false, problems: parsed.error.issues.map((i) => ({ message: `${i.path.join(".")}: ${i.message}` })) };
   }
   const content = parsed.data;
   const problems: ContentProblem[] = [];
-  const slots = new Map(manifest.slots.map((s) => [s.key, s]));
+  const slots = new Map(fields.map((s) => [s.key, s]));
 
   for (const key of Object.keys(content.slots)) {
     if (!slots.has(key)) problems.push({ slot: key, message: "This template has no such field" });
   }
-  for (const slot of manifest.slots) {
+  for (const slot of fields) {
     const value = content.slots[slot.key]?.trim() ?? "";
     if (slot.required && !value) problems.push({ slot: slot.key, message: `${slot.label} is required` });
     if (slot.maxLength && value.length > slot.maxLength) {
@@ -166,6 +221,11 @@ export function defaultContent(manifest: Manifest): InvitationContent {
   return {
     slots: Object.fromEntries(manifest.slots.filter((s) => s.default).map((s) => [s.key, s.default!])),
   };
+}
+
+/** The motion level and opening to use: the customer's choice, else the design's. */
+export function resolveMotion(manifest: Manifest, content?: InvitationContent) {
+  return { level: content?.motion ?? manifest.motion.level, opening: content?.opening ?? manifest.motion.opening };
 }
 
 /** Resolve the final theme: template defaults plus allowed overrides. */

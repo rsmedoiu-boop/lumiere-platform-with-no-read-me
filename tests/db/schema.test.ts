@@ -397,11 +397,14 @@ run("database rules", () => {
     const wed = await db.query("select slug from templates_for_occasion('weddings')");
     expect(wed.rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden", "riviera"]);
     expect((await db.query("select 1 from templates_for_occasion('anniversaries')")).rowCount).toBe(3);
-    expect((await db.query("select 1 from templates_for_occasion('birthdays')")).rowCount).toBe(0);
+    expect((await db.query("select slug from templates_for_occasion('birthdays')")).rows.map((r) => r.slug)).toEqual(["ivory-vow", "midnight-garden"]);
+    expect((await db.query("select 1 from templates_for_occasion('corporate')")).rowCount).toBe(1);
     // Manifests round-trip intact.
     const m = (await db.query("select manifest from templates where slug = 'midnight-garden'")).rows[0].manifest;
     expect(m.schemaVersion).toBe(1);
     expect(m.sections).toContain("rsvp");
+    expect(m.scenes.map((s: { id: string }) => s.id)).toEqual(["dusk", "names", "card"]);
+    expect(m.motion).toEqual({ opening: "envelope", level: "cinematic" });
     await db.query("rollback");
   });
 

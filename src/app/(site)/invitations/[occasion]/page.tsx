@@ -20,7 +20,10 @@ export async function generateMetadata({ params }: PageProps<"/invitations/[occa
 }
 
 const listKinds = (kinds: (keyof typeof kindConfig)[]) => {
-  const names = kinds.map((k) => `a ${kindConfig[k].name.toLowerCase()}`);
+  const names = kinds.map((k) => {
+    const n = kindConfig[k].name.toLowerCase();
+    return `${/^[aeiou]/.test(n) ? "an" : "a"} ${n}`;
+  });
   return names.length > 1 ? `${names.slice(0, -1).join(", ")} or ${names.at(-1)}` : names[0];
 };
 

@@ -27,6 +27,8 @@ export interface InvitationKindConfig {
   countdown: boolean;
   /** Sent after the event rather than before it. */
   afterEvent: boolean;
+  /** Default opening words shown first in the film ("You are invited"). */
+  lead: string;
   /** Website sections that make sense for this type (intersected with the occasion's). */
   sectionsAllowed: "all" | readonly string[];
 }
@@ -34,6 +36,7 @@ export interface InvitationKindConfig {
 export const kindConfig: Record<InvitationKind, InvitationKindConfig> = {
   save_the_date: {
     kind: "save_the_date",
+    lead: "Save the date",
     name: "Save the date",
     description: "An early heads-up with the date and place. Guests can say if they're hoping to come.",
     reply: "interest",
@@ -43,6 +46,7 @@ export const kindConfig: Record<InvitationKind, InvitationKindConfig> = {
   },
   invitation: {
     kind: "invitation",
+    lead: "You are invited",
     name: "Invitation",
     description: "The full invitation with every detail and a complete RSVP.",
     reply: "full",
@@ -52,6 +56,7 @@ export const kindConfig: Record<InvitationKind, InvitationKindConfig> = {
   },
   evening_invitation: {
     kind: "evening_invitation",
+    lead: "Join us for the evening",
     name: "Evening invitation",
     description: "For guests joining the celebration in the evening only.",
     reply: "full",
@@ -61,6 +66,7 @@ export const kindConfig: Record<InvitationKind, InvitationKindConfig> = {
   },
   thank_you: {
     kind: "thank_you",
+    lead: "Thank you",
     name: "Thank-you card",
     description: "A moving thank-you with your favourite photographs, sent after the day.",
     reply: "none",

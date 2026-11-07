@@ -7,13 +7,18 @@
  * background loops made with Higgsfield will be referenced by storage path in
  * `scene.background` (kind "video") — no per-customer generation needed.
  */
-import { manifestSchema, type Manifest, type TemplateDefinition } from "./manifest";
+import { manifestSchema, type ManifestInput, type TemplateDefinition } from "./manifest";
 
-const weddingSlots: Manifest["slots"] = [
+/**
+ * Sample content shown in the gallery before a customer types anything. The
+ * fields actually edited come from the occasion (src/lib/occasions), so these
+ * designs work for any occasion they list.
+ */
+const sampleSlots: ManifestInput["slots"] = [
   { key: "partnerOne", type: "text", label: "First name", maxLength: 24, required: true, default: "Sarah" },
   { key: "partnerTwo", type: "text", label: "Second name", maxLength: 24, required: true, default: "James" },
-  { key: "date", type: "date", label: "Wedding date", required: true, default: "2027-06-12" },
-  { key: "time", type: "time", label: "Ceremony time", required: false, default: "14:00" },
+  { key: "date", type: "date", label: "Date", required: true, default: "2027-06-12" },
+  { key: "time", type: "time", label: "Start time", required: false, default: "14:00" },
   { key: "venue", type: "text", label: "Venue", maxLength: 60, required: true, default: "Ashcombe House, Oxfordshire" },
   {
     key: "invitationLine",
@@ -23,10 +28,13 @@ const weddingSlots: Manifest["slots"] = [
     required: false,
     default: "request the pleasure of your company to celebrate their marriage",
   },
-  { key: "photo", type: "image", label: "Couple photograph", required: false },
+  { key: "lead", type: "text", label: "Opening words", maxLength: 40, required: false, default: "You are invited" },
+  { key: "photo", type: "image", label: "Photograph", required: false },
 ];
 
-function define(t: Omit<TemplateDefinition, "manifest"> & { manifest: Manifest }): TemplateDefinition {
+const allOccasions = ["weddings", "engagements", "birthdays", "anniversaries", "christenings", "baby-showers", "corporate", "celebrations"];
+
+function define(t: Omit<TemplateDefinition, "manifest"> & { manifest: ManifestInput }): TemplateDefinition {
   // Fail fast at build time if a manifest drifts from the schema.
   return { ...t, manifest: manifestSchema.parse(t.manifest) };
 }
@@ -37,7 +45,7 @@ export const templateLibrary: TemplateDefinition[] = [
     name: "Ivory Vow",
     tier: "classic",
     category: "weddings",
-    occasions: ["weddings", "engagements", "anniversaries"],
+    occasions: allOccasions,
     mood: "Classic and calm: engraved serif lettering, a single foil rule.",
     manifest: {
       schemaVersion: 1,
@@ -46,17 +54,16 @@ export const templateLibrary: TemplateDefinition[] = [
         fonts: { display: "cormorant", body: "jost" },
         editable: { palette: false, fonts: false },
       },
-      slots: weddingSlots,
+      slots: sampleSlots,
+      motion: { opening: "envelope", level: "gentle" },
       scenes: [
         {
-          id: "cover",
+          id: "card",
           background: { kind: "color", value: "#fbfaf7" },
           transition: "fade",
           layers: [
             { type: "ornament", name: "monogram", animation: "settle", delayMs: 0 },
-            { type: "text", slot: "partnerOne", style: "names", animation: "ink-in", delayMs: 200 },
-            { type: "text", text: "&", style: "script", animation: "settle", delayMs: 900 },
-            { type: "text", slot: "partnerTwo", style: "names", animation: "ink-in", delayMs: 1100 },
+            { type: "names", animation: "ink-in", delayMs: 200 },
             { type: "ornament", name: "foil-rule", animation: "foil-draw", delayMs: 1800 },
             { type: "text", slot: "invitationLine", style: "body", animation: "settle", delayMs: 2100 },
             { type: "text", slot: "date", style: "date", animation: "settle", delayMs: 2300 },
@@ -69,13 +76,18 @@ export const templateLibrary: TemplateDefinition[] = [
       sections: ["countdown", "schedule", "venue", "dress_code", "extra", "rsvp"],
     },
   }),
+  /**
+   * The flagship and the reference for the cinematic engine: a three-scene
+   * film over a lantern-lit garden loop, with letter-by-letter names, depth
+   * and a crossfade into the finished card.
+   */
   define({
     slug: "midnight-garden",
     name: "Midnight Garden",
     tier: "premium",
     category: "weddings",
-    occasions: ["weddings", "engagements", "anniversaries"],
-    mood: "Evening glamour: ink-blue ground, champagne lettering, a laurel crest.",
+    occasions: ["weddings", "engagements", "anniversaries", "birthdays", "celebrations"],
+    mood: "Evening glamour: a lantern-lit garden, champagne lettering, a laurel crest.",
     manifest: {
       schemaVersion: 1,
       theme: {
@@ -83,21 +95,40 @@ export const templateLibrary: TemplateDefinition[] = [
         fonts: { display: "cormorant", body: "jost" },
         editable: { palette: true, fonts: true },
       },
-      slots: weddingSlots,
+      slots: sampleSlots,
+      motion: { opening: "envelope", level: "cinematic" },
       scenes: [
         {
-          id: "cover",
-          background: { kind: "gradient", value: "radial-gradient(120% 90% at 50% 0%, #2a3150 0%, #1c2238 60%, #141a2c 100%)" },
-          transition: "fade",
+          id: "dusk",
+          durationMs: 3000,
+          background: { kind: "asset", value: "night-garden", overlay: 0.4, parallax: true },
+          transition: "dissolve",
           layers: [
-            { type: "ornament", name: "laurel", animation: "settle", delayMs: 0 },
-            { type: "text", text: "Together with their families", style: "small", animation: "settle", delayMs: 300 },
-            { type: "text", slot: "partnerOne", style: "names", animation: "ink-in", delayMs: 500 },
-            { type: "text", text: "&", style: "script", animation: "settle", delayMs: 1200 },
-            { type: "text", slot: "partnerTwo", style: "names", animation: "ink-in", delayMs: 1400 },
-            { type: "ornament", name: "foil-rule", animation: "foil-draw", delayMs: 2100 },
-            { type: "text", slot: "date", style: "date", animation: "settle", delayMs: 2400 },
-            { type: "text", slot: "venue", style: "small", animation: "settle", delayMs: 2500 },
+            { type: "ornament", name: "stars", animation: "blur", delayMs: 200, depth: 0.8 },
+            { type: "text", slot: "lead", style: "heading", animation: "letters", delayMs: 600, depth: 0.4 },
+          ],
+        },
+        {
+          id: "names",
+          durationMs: 3600,
+          background: { kind: "asset", value: "night-garden", overlay: 0.45, parallax: true },
+          transition: "dissolve",
+          layers: [
+            { type: "names", animation: "letters", delayMs: 300, depth: 0.5 },
+            { type: "ornament", name: "foil-rule", animation: "foil-draw", delayMs: 1900, depth: 0.2 },
+          ],
+        },
+        {
+          id: "card",
+          background: { kind: "asset", value: "night-garden", overlay: 0.78, parallax: true },
+          transition: "iris",
+          layers: [
+            { type: "ornament", name: "laurel", animation: "settle", delayMs: 0, depth: 0.3 },
+            { type: "text", slot: "invitationLine", style: "small", animation: "settle", delayMs: 300 },
+            { type: "names", animation: "wipe", delayMs: 500, depth: 0.15 },
+            { type: "ornament", name: "foil-rule", animation: "foil-draw", delayMs: 1500 },
+            { type: "text", slot: "date", style: "date", animation: "rise", delayMs: 1800 },
+            { type: "text", slot: "venue", style: "small", animation: "rise", delayMs: 2000 },
             { type: "countdown", slot: "date" },
             { type: "rsvp" },
           ],
@@ -121,19 +152,19 @@ export const templateLibrary: TemplateDefinition[] = [
         fonts: { display: "cormorant", body: "jost" },
         editable: { palette: true, fonts: false },
       },
-      slots: weddingSlots,
+      slots: sampleSlots,
+      motion: { opening: "curtain", level: "cinematic" },
       scenes: [
         {
-          id: "cover",
+          id: "card",
           background: { kind: "color", value: "#f4e6e1" },
           transition: "rise",
           layers: [
-            { type: "image", slot: "photo", shape: "arch" },
-            { type: "text", slot: "partnerOne", style: "names", animation: "ink-in", delayMs: 300 },
-            { type: "text", text: "&", style: "script", animation: "settle", delayMs: 1000 },
-            { type: "text", slot: "partnerTwo", style: "names", animation: "ink-in", delayMs: 1200 },
+            { type: "image", slot: "photo", shape: "arch", animation: "blur", delayMs: 0, depth: 0.35 },
+            { type: "names", animation: "ink-in", delayMs: 400 },
             { type: "text", slot: "date", style: "date", animation: "settle", delayMs: 2000 },
             { type: "text", slot: "venue", style: "small", animation: "settle", delayMs: 2100 },
+            { type: "countdown", slot: "date" },
             { type: "rsvp" },
           ],
         },
