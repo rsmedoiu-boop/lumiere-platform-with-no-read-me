@@ -15,7 +15,11 @@ export function EnvelopeOpening({
   monogram,
   card,
   children,
+  backdrop,
+  backdropVideo,
 }: {
+  backdrop?: string;
+  backdropVideo?: string;
   addressee: string;
   monogram: string;
   card: ReactNode;
@@ -57,8 +61,9 @@ export function EnvelopeOpening({
           aria-modal="true"
           aria-label="Your invitation"
         >
+          <Backdrop image={backdrop} video={backdropVideo} />
           {stage === "sealed" || stage === "opening" ? (
-            <div className="flex flex-col items-center">
+            <div className="relative flex flex-col items-center">
               <p className="mb-8 font-display text-xl italic text-[#d9c9a3]">For {addressee}</p>
               <button
                 type="button"
@@ -74,7 +79,7 @@ export function EnvelopeOpening({
               </p>
             </div>
           ) : (
-            <div className="flex w-full max-w-[400px] flex-col items-center">
+            <div className="relative flex w-full max-w-[400px] flex-col items-center">
               <div className="w-full reveal-rise shadow-[0_50px_90px_-40px_rgba(0,0,0,0.8)]">{card}</div>
               <button
                 ref={continueRef}
@@ -90,7 +95,7 @@ export function EnvelopeOpening({
           <button
             type="button"
             onClick={() => setStage("done")}
-            className="absolute right-4 top-4 text-xs text-[#9aa0b6] underline-offset-4 hover:underline"
+            className="absolute right-4 top-4 z-10 text-xs text-[#9aa0b6] underline-offset-4 hover:underline"
           >
             Skip
           </button>
@@ -147,6 +152,34 @@ function Envelope({ opening, monogram }: { opening: boolean; monogram: string })
       >
         <span className="font-display text-xl italic text-[#3a2c12]">{monogram}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Atmospheric layer behind the envelope: the template's still image, and its
+ * seamless loop where provided (muted, never for reduced-motion visitors).
+ */
+export function Backdrop({ image, video, fade = 0.55 }: { image?: string; video?: string; fade?: number }) {
+  if (!image && !video) return null;
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      {image && (
+        // eslint-disable-next-line @next/next/no-img-element -- full-bleed decorative backdrop
+        <img src={image} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      )}
+      {video && (
+        <video
+          className="absolute inset-0 h-full w-full object-cover motion-reduce:hidden"
+          src={video}
+          poster={image}
+          autoPlay
+          muted
+          loop
+          playsInline
+        />
+      )}
+      <div className="absolute inset-0" style={{ background: `linear-gradient(180deg, rgba(17,22,42,${fade}) 0%, rgba(17,22,42,${Math.min(fade + 0.25, 0.95)}) 100%)` }} />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { PageIntro } from "@/components/ui/PageIntro";
+import { Photo } from "@/components/ui/Photo";
 
 export const metadata: Metadata = { title: "AI cinematic studio" };
 
@@ -17,6 +18,10 @@ export default function AiStudioPage() {
       <PageIntro title="A short film that opens your invitation">
         Our studio uses AI video tools to build a cinematic opening around you. Changing your wording or date later never means making a new film.
       </PageIntro>
+      <figure className="mx-auto max-w-6xl px-5 pb-16">
+        <Photo name="chateau" sizes="(min-width: 1152px) 1120px, 100vw" className="aspect-[21/9] w-full rounded-[2px] object-cover" />
+        <figcaption className="mt-3 text-sm text-ink-soft">A frame from a cinematic concept, generated in our studio. Your film is built around your own story and photographs.</figcaption>
+      </figure>
       <div className="mx-auto max-w-4xl px-5 pb-24">
         <ol className="grid gap-10">
           {stages.map(([title, body], i) => (

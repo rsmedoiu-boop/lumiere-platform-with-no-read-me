@@ -28,6 +28,8 @@ export interface EventSiteData {
   accommodation: Stay[];
   extra: Faq[];
   rsvp: { deadline: string; meals: string[]; childMeal: boolean };
+  /** Imagery: a backdrop (still + optional seamless loop) and story photo. */
+  media?: { backdrop?: string; backdropVideo?: string; storyPhoto?: string; storyPhotoAlt?: string };
   /** Sections the couple has switched on, in display order. */
   sections: SectionKey[];
 }

@@ -95,6 +95,8 @@ export interface TemplateDefinition {
   category: string;
   mood: string;
   manifest: Manifest;
+  /** Sample photos (slot key -> image URL) shown in gallery previews. */
+  sampleMedia?: Record<string, string>;
 }
 
 /** What a customer's invitation stores: slot values and permitted overrides. */

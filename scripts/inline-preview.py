@@ -1,4 +1,14 @@
 import re, base64, sys, pathlib
+
+MEDIA_MIME = {'webp':'image/webp','png':'image/png','jpg':'image/jpeg','mp4':'video/mp4','svg':'image/svg+xml'}
+def inline_media(html, public_dir):
+    import base64, pathlib, re
+    def rep(m):
+        attr, path = m.group(1), m.group(2)
+        f = pathlib.Path(public_dir) / path.lstrip('/')
+        ext = path.rsplit('.', 1)[-1]
+        return f'{attr}="data:{MEDIA_MIME[ext]};base64,{base64.b64encode(f.read_bytes()).decode()}"'
+    return re.sub(r'(src|poster)="(/media/[^"]+)"', rep, html)
 out = pathlib.Path(sys.argv[1]); src = out / sys.argv[2]; dest = pathlib.Path(sys.argv[3])
 html = src.read_text()
 from urllib.parse import unquote
@@ -28,6 +38,7 @@ def script_rep(m):
     js = asset(m.group(1)).decode().replace('</script', '<\\/script').replace('\ufffd', '\\ufffd')
     return '<script>' + js + '</script>'
 html = re.sub(r'<script src="(/_next/[^"]+)"[^>]*></script>', script_rep, html)
+html = inline_media(html, out)
 dest.write_text(html)
 left = re.findall(r'(?:src|href)="(/_next/[^"]+)"', html)
 print('bytes', len(html), 'remaining /_next refs:', left[:5])

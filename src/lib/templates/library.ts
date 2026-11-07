@@ -109,6 +109,7 @@ export const templateLibrary: TemplateDefinition[] = [
     tier: "video",
     category: "weddings",
     mood: "Sun-washed destination: blush paper, an arched portrait of the two of you.",
+    sampleMedia: { photo: "/media/couple-riviera-720.webp" },
     manifest: {
       schemaVersion: 1,
       theme: {

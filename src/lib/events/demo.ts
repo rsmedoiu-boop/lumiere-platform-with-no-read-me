@@ -59,6 +59,12 @@ export const demoEvent: EventSiteData = {
     { q: "Is there a gift list?", a: "Your company is the gift. If you'd like to, a contribution to our honeymoon fund can be made on the day." },
   ],
   rsvp: { deadline: "2027-04-30", meals: ["Spring lamb", "Hake with samphire", "Wild mushroom risotto (vegetarian)"], childMeal: true },
+  media: {
+    backdrop: "/media/night-garden-900.webp",
+    backdropVideo: "/media/night-garden-loop.mp4",
+    storyPhoto: "/media/couple-garden-800.webp",
+    storyPhotoAlt: "Sarah and James walking through a garden under festoon lights",
+  },
   sections: ["countdown", "story", "schedule", "venue", "dress_code", "accommodation", "rsvp", "extra"],
 };
 

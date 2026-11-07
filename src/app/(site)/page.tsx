@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { InvitationRenderer } from "@/components/invitation/InvitationRenderer";
 import { SeatingIllustration } from "@/components/site/SeatingIllustration";
+import { Photo } from "@/components/ui/Photo";
 import { templateLibrary, getTemplate } from "@/lib/templates/library";
 import { products } from "@/config/catalogue";
 import { formatMoney } from "@/lib/money";
@@ -30,7 +31,6 @@ const levels = [
 
 export default function HomePage() {
   const hero = getTemplate("midnight-garden")!;
-  const behind = getTemplate("ivory-vow")!;
 
   return (
     <>
@@ -56,11 +56,14 @@ export default function HomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[400px]">
-            <div aria-hidden className="absolute -left-10 top-10 w-[78%] rotate-[-7deg] opacity-90 shadow-[0_30px_60px_-35px_rgba(28,34,56,0.5)]">
-              <InvitationRenderer template={behind} variant="thumb" animate={false} />
-            </div>
-            <figure className="relative ml-auto w-[86%] rotate-[2deg] shadow-[0_40px_80px_-40px_rgba(28,34,56,0.7)]">
+          <div className="relative mx-auto w-full max-w-[460px] pb-16 pl-10 sm:pl-16">
+            <Photo
+              name="hero"
+              priority
+              sizes="(min-width: 768px) 420px, 90vw"
+              className="aspect-[4/5] w-full rounded-[2px] object-cover shadow-[0_40px_80px_-40px_rgba(28,34,56,0.55)]"
+            />
+            <figure className="absolute bottom-0 left-0 w-[48%] rotate-[-3deg] shadow-[0_30px_60px_-25px_rgba(28,34,56,0.8)]">
               <InvitationRenderer template={hero} />
               <figcaption className="sr-only">An example invitation for Sarah and James, using the Midnight Garden design.</figcaption>
             </figure>

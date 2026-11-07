@@ -24,9 +24,12 @@ interface Props {
   animate?: boolean;
   locale?: string;
   className?: string;
+  /** Resolved image URLs for image slots (customer uploads, or template samples). */
+  media?: Record<string, string>;
 }
 
-export function InvitationRenderer({ template, content, variant = "card", animate = true, locale = "en-GB", className = "" }: Props) {
+export function InvitationRenderer({ template, content, variant = "card", animate = true, locale = "en-GB", className = "", media }: Props) {
+  const images = media ?? (content ? {} : (template.sampleMedia ?? {}));
   const c = content ?? defaultContent(template.manifest);
   const theme = resolveTheme(template.manifest, c);
   const scene = template.manifest.scenes[0];
@@ -111,7 +114,7 @@ export function InvitationRenderer({ template, content, variant = "card", animat
           <div
             key={i}
             role="img"
-            aria-label={value("photo") ? "Couple photograph" : "Photo placeholder"}
+            aria-label={images[layer.slot] ? "Photograph of the couple" : "Space for the couple's photograph"}
             style={{
               width: "40cqi",
               aspectRatio: "3 / 4",
@@ -121,21 +124,31 @@ export function InvitationRenderer({ template, content, variant = "card", animat
               marginBottom: "2cqi",
             }}
           >
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: radius,
-                background: "linear-gradient(160deg, color-mix(in oklab, var(--inv-accent) 35%, white), color-mix(in oklab, var(--inv-accent) 70%, var(--inv-bg)))",
-                display: "grid",
-                placeItems: "center",
-                fontFamily: "var(--inv-display)",
-                fontSize: "9cqi",
-                color: "var(--inv-bg)",
-              }}
-            >
-              {initials}
-            </div>
+            {images[layer.slot] ? (
+              // eslint-disable-next-line @next/next/no-img-element -- template art also renders in exports and emails
+              <img
+                src={images[layer.slot]}
+                alt=""
+                loading="lazy"
+                style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: radius, display: "block" }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  borderRadius: radius,
+                  background: "linear-gradient(160deg, color-mix(in oklab, var(--inv-accent) 35%, white), color-mix(in oklab, var(--inv-accent) 70%, var(--inv-bg)))",
+                  display: "grid",
+                  placeItems: "center",
+                  fontFamily: "var(--inv-display)",
+                  fontSize: "9cqi",
+                  color: "var(--inv-bg)",
+                }}
+              >
+                {initials}
+              </div>
+            )}
           </div>
         );
       }

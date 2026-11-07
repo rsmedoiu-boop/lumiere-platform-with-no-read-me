@@ -1,6 +1,17 @@
 import re, base64, posixpath, pathlib
+
+MEDIA_MIME = {'webp':'image/webp','png':'image/png','jpg':'image/jpeg','mp4':'video/mp4','svg':'image/svg+xml'}
+def inline_media(html, public_dir):
+    import base64, pathlib, re
+    def rep(m):
+        attr, path = m.group(1), m.group(2)
+        f = pathlib.Path(public_dir) / path.lstrip('/')
+        ext = path.rsplit('.', 1)[-1]
+        return f'{attr}="data:{MEDIA_MIME[ext]};base64,{base64.b64encode(f.read_bytes()).decode()}"'
+    return re.sub(r'(src|poster)="(/media/[^"]+)"', rep, html)
 from urllib.parse import unquote
-out = pathlib.Path('/tmp/site/out')
+import os
+out = pathlib.Path(os.environ.get('OUT_DIR', '/tmp/site/out'))
 DEMO = 'https://claude.ai/artifact/XkfsNrHBDrXXnSe1fwBbqE'
 def asset(p): return (out / unquote(p).lstrip('/')).read_bytes()
 mime = {'woff2':'font/woff2','woff':'font/woff','svg':'image/svg+xml','png':'image/png'}
@@ -99,12 +110,14 @@ cookie = '''<section id="draft-cookie" hidden role="dialog" aria-labelledby="coo
 <div class="mt-4 flex flex-wrap gap-2"><button class="btn btn-quiet" data-cookie-close>Essential only</button><button class="btn btn-quiet" data-cookie-close>Save choices</button><button class="btn btn-primary" data-cookie-close>Accept all</button></div>
 </section>'''
 
+sections = [inline_media(x, out) for x in sections]
 doc = f'''<!DOCTYPE html>
 <html lang="en-GB" class="h-full"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Maison Lumière — website draft</title><meta name="robots" content="noindex">
 <style>{css}</style></head>
 <body class="flex min-h-full flex-col">{''.join(sections)}{cookie}<script>{script}</script></body></html>'''
-pathlib.Path('/home/claude/site-draft').mkdir(exist_ok=True)
-pathlib.Path('/home/claude/site-draft/index.html').write_text(doc)
+dest = pathlib.Path(os.environ.get('DEST', '/home/claude/site-draft/index.html'))
+dest.parent.mkdir(parents=True, exist_ok=True)
+dest.write_text(doc)
 print('pages', len(pages), list(pages)[:25]); print('bytes', len(doc), 'U+FFFD', doc.count('�'))
 left = re.findall(r'(?:src|href)="(/[^"]*)"', doc); print('unrewritten local links:', left[:10])
