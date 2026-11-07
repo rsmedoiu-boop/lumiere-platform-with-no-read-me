@@ -25,11 +25,13 @@ Last updated: 7 November 2026. A feature is ticked only when it is implemented *
 - [x] Studio pages and guest pages have separate layouts; guest pages show no cookie banner (essential cookies only)
 - [x] Preview published as a single offline-capable page (scripts/inline-preview.py)
 
-## Milestone 2 — Accounts (mostly done)
+## Milestone 2 — Accounts ✅ (complete 7 Nov 2026)
 
 - [x] Database set up in the Supabase project (London): 28 tables with RLS, 58 policies, 6 storage policies, private buckets, catalogue — verified in the SQL editor
 - [x] Storage rules, server-only rate limiting, download my data, 14-day account deletion, retention purge, admin bootstrap, account settings page, admin overview
-- [ ] End-to-end sign-up test against the project (deferred: needs `*.supabase.co` allowed in claude.ai Settings → Capabilities)
+- [x] End-to-end test against the real Supabase project: register → confirmation email → confirm → dashboard; sign out; protected page redirects; wrong password refused; sign in; edit profile; download my data; customer blocked from /admin
+- [x] Expired confirmation links handled; "Send a new confirmation email" on sign-in; clear unconfirmed-email message; marketing choice recorded at sign-up; header shows "My account" when signed in
+- Note: Supabase's built-in email only sends to project team members (2/hour). Before beta: connect Resend as custom SMTP (free tier) so any couple can register.
 
 ## Previously planned for Milestone 2 (needs you: local Supabase via Docker, or a free Supabase project)
 

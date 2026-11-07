@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { brand } from "@/lib/brand";
+import { Suspense } from "react";
 import { MobileNav } from "./MobileNav";
+import { AccountLink } from "./AccountLink";
 
 export const primaryNav = [
   { href: "/invitations/weddings", label: "Invitations" },
@@ -31,9 +33,15 @@ export function SiteHeader() {
           ))}
         </nav>
         <div className="hidden items-center gap-4 lg:flex">
-          <Link href="/login" className="text-sm text-ink-soft hover:text-ink">
-            Sign in
-          </Link>
+          <Suspense
+            fallback={
+              <Link href="/login" className="text-sm text-ink-soft hover:text-ink">
+                Sign in
+              </Link>
+            }
+          >
+            <AccountLink className="text-sm text-ink-soft hover:text-ink" />
+          </Suspense>
           <Link href="/invitations/weddings" className="btn btn-primary">
             Choose a design
           </Link>
