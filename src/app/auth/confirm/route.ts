@@ -13,7 +13,10 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const nextParam = searchParams.get("next") ?? "/dashboard";
+  // Someone who confirmed their email part-way through the start flow goes
+  // on to finish creating the invitation they began.
+  const started = request.cookies.has("start_draft");
+  const nextParam = searchParams.get("next") ?? (started ? "/start/finish" : "/dashboard");
   const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
 
   const supabase = await createSupabaseServerClient();

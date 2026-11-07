@@ -443,6 +443,46 @@ run("database rules", () => {
     });
   });
 
+  it("start flow: one call creates the event and its invitation, owned by the customer", async () => {
+    const call = "select * from create_event_with_invitation($1, $2, $3::invitation_kind, $4, $5, $6, 'Europe/London', $7, $8::jsonb, $9::jsonb, $10)";
+    const args = (occasion: string, template: string, kind = "invitation") => [
+      occasion, template, kind, "Amara & Tom", ["Amara", "Tom"], "2027-06-12T14:30:00+01:00", "Hartley Barn",
+      JSON.stringify({ settings: { adultsOnly: false } }), JSON.stringify({ slots: { partnerOne: "Amara" } }), ["countdown", "rsvp"],
+    ];
+    await asUser(f.bob, async () => {
+      const r = await one<{ event_id: string; project_id: string; event_slug: string }>(call, args("weddings", "midnight-garden"));
+      expect(r.event_slug).toMatch(/^amara-tom-[0-9a-f]{5}$/);
+      const ev = await one<{ owner_id: string; title: string; venue_name: string; sections: string[] }>("select owner_id, title, venue_name, sections from events where id = $1", [r.event_id]);
+      expect(ev).toEqual({ owner_id: f.bob, title: "Amara & Tom", venue_name: "Hartley Barn", sections: ["countdown", "rsvp"] });
+      const pr = await one<{ kind: string; draft_content: { slots: Record<string, string> } }>("select kind, draft_content from invitation_projects where id = $1", [r.project_id]);
+      expect(pr.kind).toBe("invitation");
+      expect(pr.draft_content.slots.partnerOne).toBe("Amara");
+      // Same title again still gets its own address.
+      const r2 = await one<{ event_slug: string }>(call, args("weddings", "ivory-vow", "save_the_date"));
+      expect(r2.event_slug).not.toBe(r.event_slug);
+      // Rules the database enforces whatever the web page sends.
+      await fails(call, args("corporate", "midnight-garden"), /not available for this occasion/);
+      await fails(call, args("pirate-parties", "ivory-vow"), /occasion is not available/);
+    });
+    // Visitors can't call it at all.
+    await db.query("begin");
+    await db.query("set local role anon");
+    await expect(db.query(call, args("weddings", "ivory-vow"))).rejects.toThrow(/permission denied/);
+    await db.query("rollback");
+  });
+
+  it("start flow: a signed-out session can't create events, and there's a per-customer ceiling", async () => {
+    const call = "select * from create_event_with_invitation('weddings', 'ivory-vow', 'invitation', 'X & Y', array['X','Y'], null, 'Europe/London', '', '{}', '{}', array['rsvp'])";
+    await db.query("begin");
+    await db.query("set local role authenticated");
+    await expect(db.query(call)).rejects.toThrow(/Sign in/);
+    await db.query("rollback");
+    await asUser(f.bob, async () => {
+      for (let i = 0; i < 25; i++) await db.query(call);
+      await fails(call, [], /limit of 25 events/);
+    });
+  });
+
   it("sign-up records the marketing choice with a timestamp", async () => {
     const yes = await admin.query(
       `insert into auth.users (email, raw_user_meta_data) values ('optin-' || gen_random_uuid() || '@t.dev', '{"full_name":"Opt In","marketing_opt_in":true}') returning id`,

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth/session";
 import { listMyEvents, type EventSummary } from "@/lib/events/queries";
 import { signOut } from "../(auth)/actions";
+import { kindConfig } from "@/lib/occasions/kinds";
 
 export const metadata: Metadata = { title: "My events", robots: { index: false } };
 
@@ -34,10 +35,10 @@ async function Dashboard() {
         <section className="max-w-lg">
           <h2 className="text-3xl">Start with a design</h2>
           <p className="mt-3 text-ink-soft">
-            Choose an invitation you love. Your wedding page, guest list and seating plan are created with it.
+            Choose an invitation you love. Your event page, guest list and seating plan are created with it.
           </p>
-          <Link href="/invitations/weddings" className="btn btn-primary mt-6">
-            Browse wedding designs
+          <Link href="/start" className="btn btn-primary mt-6">
+            Start an invitation
           </Link>
         </section>
       ) : (
@@ -67,6 +68,17 @@ function EventPanel({ event }: { event: EventSummary }) {
     <li>
       <h2 className="text-3xl">{event.title}</h2>
       <p className="text-sm text-ink-soft">{[event.venueName, event.startsAt?.slice(0, 10)].filter(Boolean).join(", ")}</p>
+      {event.invitations.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-2">
+          {event.invitations.map((inv) => (
+            <li key={inv.id}>
+              <Link href={`/studio/${inv.id}`} className="inline-block border border-line px-4 py-2 text-sm hover:border-ink">
+                {kindConfig[inv.kind].name}: open in the studio
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
       {s && s.needs_review > 0 && (
         <p role="status" className="mt-4 border-l-2 border-foil bg-paper px-3 py-2 text-sm">
           {s.needs_review} seated {s.needs_review === 1 ? "guest has" : "guests have"} changed their reply. Review them in the seating plan.

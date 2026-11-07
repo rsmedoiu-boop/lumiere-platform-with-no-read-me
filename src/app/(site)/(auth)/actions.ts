@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rateLimit, tooMany } from "@/lib/security/rate-limit";
+import { signInSchema, signUpSchema } from "@/lib/auth/schemas";
 
 export type AuthState = { error?: string; message?: string; fields?: Record<string, string>; unconfirmed?: boolean } | undefined;
 
@@ -12,11 +13,6 @@ const safeNext = (v: FormDataEntryValue | null) => {
   // Only allow same-site relative paths (prevents open redirects).
   return s.startsWith("/") && !s.startsWith("//") ? s : "/dashboard";
 };
-
-const signInSchema = z.object({
-  email: z.email("Enter a valid email address"),
-  password: z.string().min(1, "Enter your password"),
-});
 
 export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   const parsed = signInSchema.safeParse({ email: form.get("email"), password: form.get("password") });
@@ -37,18 +33,6 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   if (error) return { error: "That email and password don't match an account.", fields: { email: parsed.data.email } };
   redirect(safeNext(form.get("next")));
 }
-
-const signUpSchema = z.object({
-  fullName: z.string().trim().min(1, "Enter your name").max(120),
-  email: z.email("Enter a valid email address"),
-  password: z
-    .string()
-    .min(10, "Use at least 10 characters")
-    .max(128)
-    .refine((p) => /[A-Za-z]/.test(p) && /\d/.test(p), "Use letters and at least one number"),
-  terms: z.literal("on", { error: "Please accept the terms and privacy notice" }),
-  marketing: z.string().optional(),
-});
 
 export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   const raw = Object.fromEntries(form);

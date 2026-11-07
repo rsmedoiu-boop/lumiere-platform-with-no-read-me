@@ -46,7 +46,7 @@ export default function PricingPage() {
                   ))}
                 </ul>
               </div>
-              <Link href={p.slug === "bespoke-premium" ? "/contact" : "/invitations/weddings"} className={`btn ${p.highlight ? "btn-primary" : "btn-quiet"} md:mt-2`}>
+              <Link href={p.slug === "bespoke-premium" ? "/contact" : "/start"} className={`btn ${p.highlight ? "btn-primary" : "btn-quiet"} md:mt-2`}>
                 {p.slug === "bespoke-premium" ? "Talk to the studio" : "Choose a design"}
               </Link>
             </li>

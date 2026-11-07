@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import type { InvitationKind } from "@/lib/occasions/kinds";
 
 export interface EventSummary {
   id: string;
@@ -7,6 +8,7 @@ export interface EventSummary {
   slug: string;
   startsAt: string | null;
   venueName: string | null;
+  invitations: { id: string; kind: InvitationKind }[];
   stats: {
     invited: number; accepted: number; declined: number; pending: number;
     total_capacity: number; occupied: number; available: number;
@@ -20,13 +22,14 @@ export async function listMyEvents(): Promise<EventSummary[]> {
   if (!supabase) return [];
   const { data: events } = await supabase
     .from("events")
-    .select("id, title, slug, starts_at, venue_name")
+    .select("id, title, slug, starts_at, venue_name, invitation_projects(id, kind)")
     .order("starts_at", { ascending: true, nullsFirst: false });
   return Promise.all(
     (events ?? []).map(async (e) => {
       const { data } = await supabase.rpc("event_stats", { p_event_id: e.id }).maybeSingle();
       return {
         id: e.id, title: e.title, slug: e.slug, startsAt: e.starts_at, venueName: e.venue_name,
+        invitations: (e.invitation_projects ?? []) as EventSummary["invitations"],
         stats: (data as EventSummary["stats"]) ?? null,
       };
     }),

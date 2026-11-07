@@ -42,7 +42,7 @@ export function SiteHeader() {
           >
             <AccountLink className="text-sm text-ink-soft hover:text-ink" />
           </Suspense>
-          <Link href="/invitations/weddings" className="btn btn-primary">
+          <Link href="/start" className="btn btn-primary">
             Choose a design
           </Link>
         </div>

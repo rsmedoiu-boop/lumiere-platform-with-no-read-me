@@ -28,7 +28,7 @@ export default function HowItWorksPage() {
           </li>
         ))}
         <li className="sm:pl-[96px]">
-          <Link href="/invitations/weddings" className="btn btn-primary">Choose a design</Link>
+          <Link href="/start" className="btn btn-primary">Choose a design</Link>
         </li>
       </ol>
     </>
