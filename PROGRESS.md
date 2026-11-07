@@ -16,7 +16,22 @@ Last updated: 7 November 2026. A feature is ticked only when it is implemented *
 - [x] Dashboard shell with live event statistics (via `event_stats`)
 - **Tests:** 11 domain unit tests, 14 database integration tests, typecheck, lint, production build. All passing.
 
-## Next: Milestone 2 — Accounts live (needs you: local Supabase via Docker, or a free Supabase project)
+## Flagship template ✅ (7 Nov 2026)
+
+- [x] Midnight Garden, end to end: sealed envelope addressed to the household → invitation rises out → wedding website
+- [x] Wedding website: live countdown, our story, the day (timeline), venue + map link, parking, transport, dress code, where to stay, good to know, RSVP
+- [x] Sections switch on/off per event; theme comes from the template, so other designs reuse the same site
+- [x] Household RSVP: accept/decline per person, meal choice, children's menu, dietary needs, allergies, note; shared validation schema (`src/lib/rsvp/schema.ts`) ready for the server in M5
+- [x] Studio pages and guest pages have separate layouts; guest pages show no cookie banner (essential cookies only)
+- [x] Preview published as a single offline-capable page (scripts/inline-preview.py)
+
+## Milestone 2 — Accounts (mostly done)
+
+- [x] Database set up in the Supabase project (London): 28 tables with RLS, 58 policies, 6 storage policies, private buckets, catalogue — verified in the SQL editor
+- [x] Storage rules, server-only rate limiting, download my data, 14-day account deletion, retention purge, admin bootstrap, account settings page, admin overview
+- [ ] End-to-end sign-up test against the project (deferred: needs `*.supabase.co` allowed in claude.ai Settings → Capabilities)
+
+## Previously planned for Milestone 2 (needs you: local Supabase via Docker, or a free Supabase project)
 
 - [ ] Connect Supabase locally (`supabase start`) and verify a real sign-up end to end
 - [ ] Storage buckets + storage RLS policies (private `event-media`, `exports`)

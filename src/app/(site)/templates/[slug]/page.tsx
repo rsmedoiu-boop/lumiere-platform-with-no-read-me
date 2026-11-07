@@ -47,9 +47,16 @@ export default async function TemplatePage({ params }: PageProps<"/templates/[sl
         </ul>
         <h2 className="mt-8 text-2xl">Your wedding page includes</h2>
         <p className="mt-3 text-ink-soft">{t.manifest.sections.map((s) => sectionNames[s]).join(", ")}.</p>
-        <Link href="/register" className="btn btn-primary mt-10">
-          Personalise this design
-        </Link>
+        <div className="mt-10 flex flex-wrap gap-3">
+          <Link href="/register" className="btn btn-primary">
+            Personalise this design
+          </Link>
+          {t.slug === "midnight-garden" && (
+            <Link href="/e/demo" className="btn btn-quiet">
+              Open it as a guest
+            </Link>
+          )}
+        </div>
         <p className="mt-3 text-sm text-ink-soft">Free to try. You only pay when you publish.</p>
       </div>
     </div>

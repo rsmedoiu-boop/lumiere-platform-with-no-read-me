@@ -13,7 +13,7 @@ const weddingSlots: Manifest["slots"] = [
   { key: "partnerTwo", type: "text", label: "Second name", maxLength: 24, required: true, default: "James" },
   { key: "date", type: "date", label: "Wedding date", required: true, default: "2027-06-12" },
   { key: "time", type: "time", label: "Ceremony time", required: false, default: "14:00" },
-  { key: "venue", type: "text", label: "Venue", maxLength: 60, required: true, default: "Aynhoe Park, Oxfordshire" },
+  { key: "venue", type: "text", label: "Venue", maxLength: 60, required: true, default: "Ashcombe House, Oxfordshire" },
   {
     key: "invitationLine",
     type: "longtext",
