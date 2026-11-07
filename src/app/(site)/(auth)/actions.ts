@@ -26,6 +26,9 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Sign-in isn't connected yet. Add the Supabase settings to .env.local." };
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  if (error?.code === "email_not_confirmed") {
+    return { error: "Please confirm your email first: use the link we sent when you registered.", fields: { email: parsed.data.email } };
+  }
   // Same message for unknown email and wrong password: don't reveal which accounts exist.
   if (error) return { error: "That email and password don't match an account.", fields: { email: parsed.data.email } };
   redirect(safeNext(form.get("next")));

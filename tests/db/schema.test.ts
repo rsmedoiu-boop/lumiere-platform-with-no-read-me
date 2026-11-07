@@ -389,4 +389,16 @@ run("database rules", () => {
       expect((await db.query("update events set title = 'x' where id = $1", [f.eventId])).rowCount).toBe(0);
     });
   });
+
+  it("sign-up records the marketing choice with a timestamp", async () => {
+    const yes = await admin.query(
+      `insert into auth.users (email, raw_user_meta_data) values ('optin-' || gen_random_uuid() || '@t.dev', '{"full_name":"Opt In","marketing_opt_in":true}') returning id`,
+    );
+    const no = await admin.query(
+      `insert into auth.users (email, raw_user_meta_data) values ('optout-' || gen_random_uuid() || '@t.dev', '{"full_name":"Opt Out"}') returning id`,
+    );
+    const p = (id: string) => admin.query("select full_name, marketing_opt_in, marketing_opt_in_at is not null as stamped from profiles where id = $1", [id]);
+    expect((await p(yes.rows[0].id)).rows[0]).toEqual({ full_name: "Opt In", marketing_opt_in: true, stamped: true });
+    expect((await p(no.rows[0].id)).rows[0]).toEqual({ full_name: "Opt Out", marketing_opt_in: false, stamped: false });
+  });
 });
