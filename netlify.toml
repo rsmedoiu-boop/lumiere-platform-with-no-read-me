@@ -1,0 +1,22 @@
+# Netlify: the private TEST site (free plan). Every push to main redeploys it.
+# The real launch gets its own site and settings at Milestone 8.
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  NEXT_TELEMETRY_DISABLED = "1"
+  # Marks this as the test site: banner on every page, hidden from search engines.
+  NEXT_PUBLIC_SITE_STAGE = "test"
+  # Public by design (sent to every browser; data is protected by row-level
+  # security). The SECRET key is never stored here: it is added in Netlify's
+  # environment variables by the owner.
+  NEXT_PUBLIC_SUPABASE_URL = "https://ingprqknphkkceldcgnb.supabase.co"
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Gaqy6-Jpy6nV_8vs_7JHFA_3hafJJnH"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"

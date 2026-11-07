@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { rateLimit, tooMany } from "@/lib/security/rate-limit";
-import { signInSchema, signUpSchema } from "@/lib/auth/schemas";
+import { signInSchema, signUpSchema, siteUrl } from "@/lib/auth/schemas";
 
 export type AuthState = { error?: string; message?: string; fields?: Record<string, string>; unconfirmed?: boolean } | undefined;
 
@@ -43,7 +43,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   if (!rl.ok) return { error: tooMany(rl.retryAfter), fields };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Registration isn't connected yet. Add the Supabase settings to .env.local.", fields };
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const site = siteUrl();
   const { error } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -63,7 +63,7 @@ export async function requestPasswordReset(_: AuthState, form: FormData): Promis
   if (!rl.ok) return { error: tooMany(rl.retryAfter) };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Password reset isn't connected yet." };
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const site = siteUrl();
   await supabase.auth.resetPasswordForEmail(email.data, { redirectTo: `${site}/auth/confirm?next=/dashboard/settings` });
   // Same answer whether or not the account exists.
   return { message: "If an account uses that address, a reset link is on its way." };
@@ -82,7 +82,7 @@ export async function resendConfirmation(_: AuthState, form: FormData): Promise<
   if (!rl.ok) return { error: tooMany(rl.retryAfter), fields: { email: email.data }, unconfirmed: true };
   const supabase = await createSupabaseServerClient();
   if (!supabase) return { error: "Sign-in isn't connected yet." };
-  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const site = siteUrl();
   const { error } = await supabase.auth.resend({ type: "signup", email: email.data, options: { emailRedirectTo: `${site}/auth/confirm` } });
   if (error?.code === "over_email_send_rate_limit") {
     return { error: "We've sent several emails already. Please wait a little and try again.", fields: { email: email.data }, unconfirmed: true };

@@ -18,4 +18,8 @@ export const signUpSchema = z.object({
   marketing: z.string().optional(),
 });
 
-export const siteUrl = () => process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+/**
+ * This deployment's address, for links in emails. Netlify sets URL to the
+ * site's main address automatically; locally it falls back to localhost.
+ */
+export const siteUrl = () => (process.env.NEXT_PUBLIC_SITE_URL ?? process.env.URL ?? "http://localhost:3000").replace(/\/$/, "");
