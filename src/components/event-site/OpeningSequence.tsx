@@ -134,13 +134,13 @@ export function OpeningSequence({
 
           {stage !== "card" && opening === "curtain" && <Curtain opening={stage === "opening"} onOpen={open} addressee={addressee} monogram={monogram} />}
 
-          {stage !== "card" && opening === "gilded" && art && <GildedEnvelope opening={stage === "opening"} onOpen={open} addressee={addressee} monogram={monogram} art={art} />}
+          {opening === "gilded" && art && <GildedEnvelope opening={stage !== "closed"} leaving={stage === "card"} onOpen={open} addressee={addressee} monogram={monogram} art={art} />}
 
           {stage !== "card" && opening === "title-card" && <TitleCard playing={stage === "opening"} onBegin={open} addressee={addressee} title={title} />}
 
           {stage === "card" && (
             <div className="relative flex w-full max-w-[400px] flex-col items-center">
-              <div key={plays} className="reveal-rise-card w-full shadow-[0_50px_90px_-40px_rgba(0,0,0,0.8)]">
+              <div key={plays} className="reveal-rise-card w-full shadow-[0_50px_90px_-40px_rgba(0,0,0,0.8)]" style={opening === "gilded" ? { animationDelay: "450ms", animationDuration: "1.6s" } : undefined}>
                 {card}
               </div>
               <div className="reveal-settle mt-8 flex flex-wrap items-center justify-center gap-3" style={{ animationDelay: "2200ms" }}>
@@ -277,19 +277,31 @@ function Curtain({ opening, onOpen, addressee, monogram }: { opening: boolean; o
  */
 function GildedEnvelope({
   opening,
+  leaving = false,
   onOpen,
   addressee,
   monogram,
   art,
 }: {
   opening: boolean;
+  /** Once the envelope has opened it dissolves away, revealing the invitation beneath. */
+  leaving?: boolean;
   onOpen: () => void;
   addressee: string;
   monogram: string;
   art: { closed: string; revealed: string };
 }) {
   return (
-    <div className="fixed inset-0 z-10 flex items-center justify-center bg-[#2a0d14]">
+    <div
+      className="fixed inset-0 z-10 flex items-center justify-center bg-[#2a0d14]"
+      aria-hidden={leaving}
+      style={{
+        opacity: leaving ? 0 : 1,
+        visibility: leaving ? "hidden" : "visible",
+        pointerEvents: leaving ? "none" : undefined,
+        transition: leaving ? "opacity 1500ms cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 1500ms" : undefined,
+      }}
+    >
       <div className="relative h-full max-h-[100dvh] w-full max-w-[calc(100dvh*9/16)] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element -- full-bleed artwork */}
         <img src={art.closed} alt="" aria-hidden className="absolute inset-0 h-full w-full object-cover" />

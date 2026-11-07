@@ -18,6 +18,8 @@ export interface CinematicAsset {
   mood: string[];
   /** Darkness of the picture, so lettering can pick a readable overlay. */
   tone: "dark" | "light";
+  /** A video that plays once and holds its last frame, rather than looping. */
+  once?: boolean;
   source: "higgsfield" | "studio";
 }
 
@@ -37,6 +39,17 @@ export const cinematicAssets: CinematicAsset[] = [
     src: "/media/tuscan-golden-hour-loop.mp4",
     poster: "/media/tuscan-golden-hour-1080.webp",
     mood: ["vineyard", "golden hour", "italy", "rustic", "outdoor"],
+    tone: "light",
+    source: "higgsfield",
+  },
+  {
+    // The couple walk away down the vine rows. Plays once from the same opening frame as the loop, then holds.
+    id: "tuscan-walk",
+    kind: "video",
+    src: "/media/tuscan-walk.mp4",
+    poster: "/media/tuscan-golden-hour-1080.webp",
+    once: true,
+    mood: ["vineyard", "golden hour", "italy", "couple", "walking"],
     tone: "light",
     source: "higgsfield",
   },
@@ -89,8 +102,9 @@ export function backdropFor(t: { manifest: { scenes: { background: { kind: strin
   backdrop?: string;
   backdropVideo?: string;
 } {
-  const bg = t.manifest.scenes.map((s) => s.background).find((b) => b.kind === "asset");
-  const a = bg ? getAsset(bg.value) : undefined;
+  // A backdrop loops, so skip any play-once clip and use the loopable asset.
+  const assets = t.manifest.scenes.map((s) => s.background).filter((b) => b.kind === "asset").map((b) => getAsset(b.value));
+  const a = assets.find((x) => x && !x.once) ?? assets[0];
   if (!a) return { backdrop: undefined, backdropVideo: undefined };
   return { backdrop: a.poster, backdropVideo: a.kind === "video" ? a.src : undefined };
 }

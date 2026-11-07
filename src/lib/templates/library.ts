@@ -196,9 +196,9 @@ export const templateLibrary: TemplateDefinition[] = [
       scenes: [
         {
           id: "golden-hour",
-          durationMs: 3400,
+          durationMs: 6800,
           align: "start",
-          background: { kind: "asset", value: "tuscan-golden-hour", overlay: 0.6, veil: "top", parallax: true },
+          background: { kind: "asset", value: "tuscan-walk", overlay: 0.6, veil: "top", parallax: true },
           transition: "dissolve",
           layers: [
             { type: "ornament", name: "sprig", animation: "blur", delayMs: 300, depth: 0.5 },

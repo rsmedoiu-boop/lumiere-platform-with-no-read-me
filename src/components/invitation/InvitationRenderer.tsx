@@ -327,7 +327,7 @@ function SceneBackground({ background: b, level, shared = false }: { background:
           // eslint-disable-next-line @next/next/no-img-element -- decorative backdrop, also used in exports
           <img src={still} alt="" className="absolute inset-0 h-full w-full object-cover" />
         )}
-        {video && <video className="inv-video absolute inset-0 h-full w-full object-cover" src={video} poster={still} autoPlay muted loop playsInline preload="metadata" />}
+        {video && <video className="inv-video absolute inset-0 h-full w-full object-cover" src={video} poster={still} autoPlay muted loop={!asset?.once} playsInline preload="metadata" />}
       </div>
       {/* A shared background carries no veil of its own: each scene adds its own. */}
       {!shared && <Veil amount={b.overlay} from={b.veil} />}
